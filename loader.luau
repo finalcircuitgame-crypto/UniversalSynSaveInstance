@@ -1,6 +1,6 @@
 --[[
-    Universal Syn Save Instance - GUI Loader
-    Fetches the newest GUI from the repository, bypasses stale URL caches,
+    Universal Syn Save Instance - GUI Loader v1.13.2
+    Forces fresh HTTP requests with unique URLs and no-cache request headers,
     validates the downloaded source, and reports fetch/compile/runtime errors.
 
     Usage:
@@ -42,15 +42,71 @@ local function versionAtLeast(version, minimum)
     return true
 end
 
-local function download(url)
-    -- A unique query string prevents stale raw-GitHub/CDN responses.
-    local cacheKey = string.format("%.6f", os.clock()):gsub("%.", "")
-    local requestUrl = url .. "?cache=" .. cacheKey
+local HttpService = game:GetService("HttpService")
 
-    local ok, source = pcall(function()
-        return game:HttpGet(requestUrl)
+local function newCacheToken()
+    -- GUIDs make each request URL different, even when the loader is run
+    -- multiple times in the same second.
+    local ok, guid = pcall(function()
+        return HttpService:GenerateGUID(false)
     end)
+    if ok and type(guid) == "string" then
+        return guid
+    end
 
+    return tostring(os.time())
+        .. "-"
+        .. tostring(os.clock()):gsub("%.", "")
+        .. "-"
+        .. tostring(math.random(100000, 999999))
+end
+
+local function appendCacheToken(url)
+    local separator = url:find("?", 1, true) and "&" or "?"
+    return url .. separator .. "_ussi_nocache=" .. newCacheToken()
+end
+
+local function getFreshSource(url)
+    local requestUrl = appendCacheToken(url)
+    local noCacheHeaders = {
+        ["Cache-Control"] = "no-cache, no-store, max-age=0",
+        ["Pragma"] = "no-cache",
+        ["Expires"] = "0",
+    }
+
+    -- Prefer the executor's request API so cache-control headers can be sent.
+    -- Fall back to HttpGet with a unique URL if request/http_request is absent
+    -- or unsupported by the executor.
+    local requestFunction
+    if type(request) == "function" then
+        requestFunction = request
+    elseif type(http_request) == "function" then
+        requestFunction = http_request
+    end
+
+    if requestFunction then
+        local ok, response = pcall(requestFunction, {
+            Url = requestUrl,
+            Method = "GET",
+            Headers = noCacheHeaders,
+        })
+
+        if ok and type(response) == "table" then
+            local statusCode = tonumber(response.StatusCode or response.StatusCodeValue)
+            local body = response.Body
+            if (not statusCode or (statusCode >= 200 and statusCode < 300))
+                and type(body) == "string"
+                and #body > 0 then
+                return body
+            end
+        end
+    end
+
+    return game:HttpGet(requestUrl)
+end
+
+local function download(url)
+    local ok, source = pcall(getFreshSource, url)
     if not ok then
         return nil, source
     end
