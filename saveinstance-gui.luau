@@ -277,22 +277,22 @@ local function makeToggle(parent, title, description, default)
         desc.TextWrapped = true
         desc.TextYAlignment = Enum.TextYAlignment.Top
     end
+    local value = getSavedSetting(title, default == true, "boolean")
     local toggle = create("TextButton", {
         AutoButtonColor = false,
         AnchorPoint = Vector2.new(1, 0.5),
         Position = UDim2.new(1, 0, 0.5, 0),
         Size = UDim2.fromOffset(40, 22),
-        BackgroundColor3 = default and Theme.Accent or Theme.Border,
+        BackgroundColor3 = value and Theme.Accent or Theme.Border,
         Text = "",
     }, row)
     corner(toggle, 20)
     local knob = create("Frame", {
         BackgroundColor3 = Color3.new(1, 1, 1),
         Size = UDim2.fromOffset(16, 16),
-        Position = default and UDim2.fromOffset(21, 3) or UDim2.fromOffset(3, 3),
+        Position = value and UDim2.fromOffset(21, 3) or UDim2.fromOffset(3, 3),
     }, toggle)
     corner(knob, 20)
-    local value = getSavedSetting(title, default == true, "boolean")
     local function render()
         TweenService:Create(toggle, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
             BackgroundColor3 = value and Theme.Accent or Theme.Border
