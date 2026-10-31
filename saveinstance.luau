@@ -3618,6 +3618,7 @@ end
 --- @field IgnoreList {Instance | string} | {[Instance | string]: boolean | {[string]: boolean}} -- Objects to skip. Use an [Instance] or a class name as a key to skip that object and its children. `ClassName = false` keeps the object but skips its children. `ClassName = {Name1, Name2}` skips objects with those names. You can also pass a list of Instances or class names. ___Default:___ {CoreGui, CorePackages, Packages = false}
 --- @field IgnoreSpecialProperties boolean -- Do not use the executor function `gethiddenproperty`. Other property reads still work. This can help if your executor crashes or the file is corrupted. ___Default:___ false
 --- @field AlternativeWritefile boolean -- Write the file in smaller pieces with `appendfile` instead of one `writefile` call. For binary saves, if `appendfile` fails, it uses `writefile`; if both fail, it switches to XML. ___Default:___ true
+--- @field WriteChunkSize number -- Maximum chunk size in bytes for appendfile output. Clamped to 256 KB-16 MB. Larger chunks use fewer write calls but require more temporary memory. ___Default:___ 4194304
 --- @field Anonymous boolean | {Name: string?, UserId: number?} -- **RISKY:** Replace LocalPlayer.Name and UserId in the output. `true` replaces them with `"Roblox"` and `1`. You can also pass a table with `Name` and/or `UserId`. Name matching ignores case. This can also change other text or numbers that match. ___Default:___ false
 --- @field RiskyServicesDisabled {UGC: boolean?, Encoding: boolean?, Reflection: boolean?} -- Turn off services that some games may detect. `UGC` skips [UGCValidationService] (used for some hidden properties). `Encoding` skips [EncodingService]. `Reflection` skips [ReflectionService] (used for class data). Set a flag to `true` to skip that service. If you do not set `RiskyServicesDisabled` yourself, the UGC fallback turns on automatically when `gethiddenproperty` is missing. ___Default:___ {UGC = true, Encoding = false, Reflection = false}
 --- @field AvoidFileOverwrite boolean -- If `FilePath` is not set, add (1), (2), ... to the file name instead of overwriting an existing file. ___Default:___ true
@@ -3888,6 +3889,7 @@ local function synsaveinstance(...)
 		SharedBinaryStrings = false,
 		TreatUnionsAsParts = false,
 		AlternativeWritefile = true,
+		WriteChunkSize = 4 * 1024 * 1024,
 
 		OptionsAliases = { -- You can't really modify these as a user (because they're read before user's Options are loaded)
 			Clipboard = "CopyToClipboard",
@@ -6477,7 +6479,11 @@ local function synsaveinstance(...)
 			-- Batch chunks into ~4MB appends: sizes come from #chunk, so nothing
 			-- is joined until a batch actually flushes. A whole-file concat would
 			-- overflow on large places.
-			local SEGMENT_SIZE = 4145728
+			local SEGMENT_SIZE = math.clamp(
+				tonumber(OPTIONS.WriteChunkSize) or (4 * 1024 * 1024),
+				256 * 1024,
+				16 * 1024 * 1024
+			)
 			local batch, batchSize, written = {}, 0, 0
 
 			local function flush()
