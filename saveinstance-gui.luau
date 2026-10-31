@@ -874,6 +874,15 @@ local function setStatus(message, color, progress)
     runStatus.Text = message
     runStatus.TextColor3 = color or Theme.Muted
 
+    if color == Theme.Red then
+        runProgressFill.BackgroundColor3 = Theme.Red
+        if progress == nil then progress = 0 end
+    elseif color == Theme.Green then
+        runProgressFill.BackgroundColor3 = Theme.Green
+    else
+        runProgressFill.BackgroundColor3 = Theme.Accent
+    end
+
     if progress == nil then
         if runProgressMode ~= "indeterminate" then
             if runProgressTween then pcall(function() runProgressTween:Cancel() end) end
