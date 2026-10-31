@@ -25,11 +25,11 @@ local HttpService = game:GetService("HttpService")
 local cacheBust = HttpService:GenerateGUID(false)
 
 loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/loader.luau?_ussi_nocache=" .. cacheBust
+    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/943d010e1ce57f015bc64286dc91ceddfdaf348f/loader.luau?_ussi_nocache=" .. cacheBust
 ))()
 ```
 
-The loader sends no-cache headers when the executor exposes request/http_request, adds a fresh GUID query to every request, checks the downloaded GUI version, falls back to a commit-pinned copy if the main branch cannot be fetched, and reports download/compile/execution errors. The bootstrap example also uses a fresh GUID so the loader script itself is not reused from a URL cache.
+The v1.13.3 loader sends no-cache headers when the executor exposes request/http_request, adds a fresh GUID query to every request, requires GUI v1.13.2 or newer, and falls back to a commit-pinned v1.13.2 copy if the main branch cannot be fetched. The bootstrap example pins the loader itself to a specific commit and uses a fresh GUID query to avoid reusing a cached bootstrap response.
 
 ## Custom output names
 
@@ -37,9 +37,9 @@ In the GUI's **Save** tab, use **Custom output name** to name the exported file.
 
 ## Loading and save progress
 
-GUI v1.13.1 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
+GUI v1.13.2 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
 
-## GUI v1.13.1 feature set
+## GUI v1.13.2 feature set
 
 The GUI adds 20 categorized workflow features:
 
