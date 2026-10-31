@@ -4771,7 +4771,7 @@ local function synsaveinstance(...)
 				end
 			end
 
-			updateStatusDisplay("Preparing save...", "Reading options and initializing...", nil, "STARTING")
+			setStatusDisplay("Preparing save...", "Reading options and initializing...", nil, "STARTING")
 			local showTween = StatusTweenService:Create(
 				card,
 				TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
@@ -6499,6 +6499,12 @@ local function synsaveinstance(...)
 					appendfile,
 					placename,
 					table.concat(batch)
+				)
+				setStatusDisplay(
+					"Writing output file",
+					string.format("%d%% • %.1f / %.1f MB", math.floor(progress * 100), written / 1048576, totalsize / 1048576),
+					progress,
+					"WRITING"
 				)
 				table.clear(batch)
 				batchSize = 0
