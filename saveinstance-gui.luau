@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.12.0"
+local GUI_VERSION = "v1.13.0"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -507,6 +507,8 @@ local function makeInput(parent, title, placeholder, initial)
         Font = Enum.Font.Gotham,
         TextXAlignment = Enum.TextXAlignment.Left,
     }, wrap)
+    registerDensity(box, "Position", UDim2.fromOffset(0, 23), UDim2.fromOffset(0, 20))
+    registerDensity(box, "Size", UDim2.new(1, 0, 0, 32), UDim2.new(1, 0, 0, 28))
     corner(box, 7)
     local boxStroke = stroke(box)
     box.Focused:Connect(function()
