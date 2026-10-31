@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.7.0"
+local GUI_VERSION = "v1.8.0"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -599,6 +599,7 @@ local objectCard = makeCard(savePage, "SPECIFIC INSTANCE (OPTIONAL)", "Save one 
 local objectPathBox = makeInput(objectCard, "Instance path", 'game:GetService("ReplicatedStorage").Assets.CutScenes.NIGHT1TESTING', "")
 local objectHint = label(objectCard, "Supports game:GetService(\"ServiceName\").Folder.Model paths and simple dot paths like ReplicatedStorage.Assets.CutScenes.NIGHT1TESTING.", 10, Theme.Muted)
 objectHint.TextWrapped = true
+local browseInstancesButton = button(objectCard, "Browse game instances  →", 36, false)
 
 local saveOptionsCard = makeCard(savePage, "SAVE OPTIONS", "Control how the experience is captured and written.")
 local safeMode = makeToggle(saveOptionsCard, "Safe mode", "Disconnects the local player while saving; enables protective save settings.", false)
@@ -731,6 +732,356 @@ local function resolveInstancePath(path)
     return current
 end
 
+-- Explorer-style browser for selecting an Instance without typing its path.
+local browserSelectedInstance = nil
+local browserSelectedPath = nil
+
+objectPathBox:GetPropertyChangedSignal("Text"):Connect(function()
+    if browserSelectedPath and objectPathBox.Text ~= browserSelectedPath then
+        browserSelectedInstance = nil
+        browserSelectedPath = nil
+    end
+end)
+
+local function openInstanceBrowser()
+    local overlay = create("Frame", {
+        Name = "InstanceBrowserOverlay",
+        BackgroundColor3 = Color3.new(0, 0, 0),
+        BackgroundTransparency = 0.32,
+        Size = UDim2.fromScale(1, 1),
+        ZIndex = 60,
+    }, ScreenGui)
+
+    local panel = create("Frame", {
+        Name = "InstanceBrowser",
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromOffset(650, 470),
+        BackgroundColor3 = Theme.Background,
+        ZIndex = 61,
+    }, overlay)
+    corner(panel, 12)
+    stroke(panel, Theme.Border)
+
+    local header = create("Frame", {
+        BackgroundColor3 = Theme.Surface,
+        Size = UDim2.new(1, 0, 0, 48),
+        ZIndex = 62,
+    }, panel)
+    corner(header, 12)
+    local headerTitle = label(header, "INSTANCE EXPLORER", 14, Theme.Text, Enum.Font.GothamBold)
+    headerTitle.Position = UDim2.fromOffset(17, 0)
+    headerTitle.Size = UDim2.new(1, -75, 1, 0)
+    headerTitle.ZIndex = 63
+
+    local closeBrowser = create("TextButton", {
+        AutoButtonColor = false,
+        BackgroundColor3 = Theme.Surface2,
+        Position = UDim2.new(1, -42, 0, 9),
+        Size = UDim2.fromOffset(30, 30),
+        Text = "×",
+        TextColor3 = Theme.Text,
+        TextSize = 20,
+        Font = Enum.Font.GothamMedium,
+        ZIndex = 64,
+    }, header)
+    corner(closeBrowser, 7)
+    closeBrowser.MouseButton1Click:Connect(function() overlay:Destroy() end)
+
+    local searchBox = create("TextBox", {
+        BackgroundColor3 = Theme.Surface2,
+        Position = UDim2.fromOffset(17, 60),
+        Size = UDim2.new(1, -265, 0, 32),
+        ClearTextOnFocus = false,
+        Text = "",
+        PlaceholderText = "Search instances by name...",
+        PlaceholderColor3 = Theme.Muted,
+        TextColor3 = Theme.Text,
+        TextSize = 12,
+        Font = Enum.Font.Gotham,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 63,
+    }, panel)
+    corner(searchBox, 7)
+    create("UIPadding", {
+        PaddingLeft = UDim.new(0, 10),
+        PaddingRight = UDim.new(0, 10),
+    }, searchBox)
+
+    local function browserActionButton(text, x, width)
+        local item = create("TextButton", {
+            AutoButtonColor = false,
+            BackgroundColor3 = Theme.Surface2,
+            Position = UDim2.fromOffset(x, 60),
+            Size = UDim2.fromOffset(width, 32),
+            Text = text,
+            TextColor3 = Theme.Text,
+            TextSize = 11,
+            Font = Enum.Font.GothamMedium,
+            ZIndex = 63,
+        }, panel)
+        corner(item, 7)
+        stroke(item)
+        return item
+    end
+
+    local searchButton = browserActionButton("Search", 395, 68)
+    local refreshButton = browserActionButton("Refresh tree", 470, 82)
+    local clearButton = browserActionButton("Clear", 559, 73)
+
+    local help = label(panel, "Expand arrows to browse. Select an instance by clicking its name.", 10, Theme.Muted)
+    help.Position = UDim2.fromOffset(18, 96)
+    help.Size = UDim2.new(1, -36, 0, 16)
+    help.ZIndex = 63
+
+    local tree = create("ScrollingFrame", {
+        Name = "InstanceTree",
+        BackgroundColor3 = Theme.Surface,
+        BorderSizePixel = 0,
+        Position = UDim2.fromOffset(17, 119),
+        Size = UDim2.new(1, -34, 1, -174),
+        CanvasSize = UDim2.new(),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        ScrollBarThickness = 4,
+        ScrollBarImageColor3 = Theme.Accent,
+        ZIndex = 62,
+    }, panel)
+    corner(tree, 8)
+    create("UIPadding", {
+        PaddingTop = UDim.new(0, 5),
+        PaddingBottom = UDim.new(0, 5),
+        PaddingLeft = UDim.new(0, 5),
+        PaddingRight = UDim.new(0, 5),
+    }, tree)
+    create("UIListLayout", {
+        Padding = UDim.new(0, 2),
+        SortOrder = Enum.SortOrder.LayoutOrder,
+    }, tree)
+
+    local selectionLabel = label(panel, "Selected: none", 10, Theme.Muted)
+    selectionLabel.Position = UDim2.fromOffset(18, 411)
+    selectionLabel.Size = UDim2.new(1, -185, 0, 20)
+    selectionLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    selectionLabel.ZIndex = 63
+
+    local useSelection = create("TextButton", {
+        AutoButtonColor = false,
+        BackgroundColor3 = Theme.Accent,
+        Position = UDim2.new(1, -153, 1, -43),
+        Size = UDim2.fromOffset(135, 30),
+        Text = "Use selected",
+        TextColor3 = Color3.new(1, 1, 1),
+        TextSize = 12,
+        Font = Enum.Font.GothamSemibold,
+        ZIndex = 64,
+    }, panel)
+    corner(useSelection, 7)
+
+    local expanded = {}
+    local selected = nil
+    local searchGeneration = 0
+    local rowOrder = 0
+
+    local function clearTreeRows()
+        for _, child in ipairs(tree:GetChildren()) do
+            if child:IsA("Frame") then child:Destroy() end
+        end
+        rowOrder = 0
+    end
+
+    local function setBrowserSelection(instance)
+        selected = instance
+        if instance then
+            local ok, fullName = pcall(function() return instance:GetFullName() end)
+            selectionLabel.Text = "Selected: " .. (ok and fullName or instance.Name)
+        else
+            selectionLabel.Text = "Selected: none"
+        end
+    end
+
+    local function addTreeRow(instance, depth, searchable)
+        rowOrder = rowOrder + 1
+        local row = create("Frame", {
+            BackgroundColor3 = Theme.Surface,
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, -4, 0, 27),
+            LayoutOrder = rowOrder,
+            ZIndex = 63,
+        }, tree)
+
+        local indent = math.min(depth * 14, 175)
+        local hasChildren = #instance:GetChildren() > 0
+        local expand = create("TextButton", {
+            AutoButtonColor = false,
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(indent, 0),
+            Size = UDim2.fromOffset(23, 26),
+            Text = searchable and "·" or (hasChildren and (expanded[instance] and "▾" or "▸") or "·"),
+            TextColor3 = Theme.Muted,
+            TextSize = 13,
+            Font = Enum.Font.GothamBold,
+            ZIndex = 64,
+        }, row)
+
+        local nameButton = create("TextButton", {
+            AutoButtonColor = false,
+            BackgroundColor3 = selected == instance and Theme.Accent or Theme.Surface,
+            BackgroundTransparency = selected == instance and 0.72 or 1,
+            Position = UDim2.fromOffset(indent + 24, 1),
+            Size = UDim2.new(1, -indent - 28, 0, 25),
+            Text = instance.Name .. "   [" .. instance.ClassName .. "]",
+            TextColor3 = selected == instance and Theme.AccentHover or Theme.Text,
+            TextSize = 11,
+            Font = Enum.Font.Gotham,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+            ZIndex = 64,
+        }, row)
+        corner(nameButton, 5)
+
+        expand.MouseButton1Click:Connect(function()
+            if searchable or not hasChildren then return end
+            expanded[instance] = not expanded[instance]
+            searchBox.Text = ""
+            searchGeneration = searchGeneration + 1
+            refreshTree()
+        end)
+        nameButton.MouseButton1Click:Connect(function()
+            setBrowserSelection(instance)
+            for _, child in ipairs(tree:GetChildren()) do
+                if child:IsA("Frame") then
+                    local nameControl = child:FindFirstChild("InstanceName")
+                    if nameControl then
+                        local isSelected = child:GetAttribute("SelectedInstance") == true
+                        nameControl.BackgroundColor3 = isSelected and Theme.Accent or Theme.Surface
+                        nameControl.BackgroundTransparency = isSelected and 0.72 or 1
+                        nameControl.TextColor3 = isSelected and Theme.AccentHover or Theme.Text
+                    end
+                end
+            end
+            nameButton.Name = "InstanceName"
+            row:SetAttribute("SelectedInstance", true)
+            for _, other in ipairs(tree:GetChildren()) do
+                if other:IsA("Frame") and other ~= row then
+                    other:SetAttribute("SelectedInstance", false)
+                    local otherName = other:FindFirstChild("InstanceName")
+                    if otherName then
+                        otherName.BackgroundColor3 = Theme.Surface
+                        otherName.BackgroundTransparency = 1
+                        otherName.TextColor3 = Theme.Text
+                    end
+                end
+            end
+            nameButton.BackgroundColor3 = Theme.Accent
+            nameButton.BackgroundTransparency = 0.72
+            nameButton.TextColor3 = Theme.AccentHover
+        end)
+    end
+
+    function refreshTree()
+        clearTreeRows()
+        local roots = game:GetChildren()
+        table.sort(roots, function(a, b) return string.lower(a.Name) < string.lower(b.Name) end)
+
+        local function addBranch(instance, depth)
+            addTreeRow(instance, depth, false)
+            if expanded[instance] then
+                local children = instance:GetChildren()
+                table.sort(children, function(a, b) return string.lower(a.Name) < string.lower(b.Name) end)
+                for _, child in ipairs(children) do
+                    addBranch(child, depth + 1)
+                end
+            end
+        end
+
+        for _, service in ipairs(roots) do
+            addBranch(service, 0)
+        end
+    end
+
+    local function performSearch()
+        local query = string.lower(searchBox.Text:match("^%s*(.-)%s*$") or "")
+        searchGeneration = searchGeneration + 1
+        local generation = searchGeneration
+        if query == "" then
+            refreshTree()
+            return
+        end
+
+        clearTreeRows()
+        local searchingRow = label(tree, "Searching instance names...", 11, Theme.Muted)
+        searchingRow.LayoutOrder = 1
+        searchingRow.Size = UDim2.new(1, -8, 0, 25)
+        searchingRow.ZIndex = 64
+
+        task.spawn(function()
+            local descendants = game:GetDescendants()
+            local matches = {}
+            local scanned = 0
+            for _, instance in ipairs(descendants) do
+                scanned = scanned + 1
+                if string.find(string.lower(instance.Name), query, 1, true) then
+                    table.insert(matches, instance)
+                    if #matches >= 120 then break end
+                end
+                if scanned % 2500 == 0 then
+                    task.wait()
+                    if generation ~= searchGeneration or not overlay.Parent then return end
+                end
+            end
+
+            if generation ~= searchGeneration or not overlay.Parent then return end
+            clearTreeRows()
+            if #matches == 0 then
+                local empty = label(tree, "No matching instances found.", 11, Theme.Muted)
+                empty.LayoutOrder = 1
+                empty.Size = UDim2.new(1, -8, 0, 25)
+                empty.ZIndex = 64
+                return
+            end
+            for _, instance in ipairs(matches) do
+                addTreeRow(instance, 0, true)
+            end
+        end)
+    end
+
+    searchButton.MouseButton1Click:Connect(performSearch)
+    searchBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then performSearch() end
+    end)
+    refreshButton.MouseButton1Click:Connect(function()
+        searchGeneration = searchGeneration + 1
+        searchBox.Text = ""
+        expanded = {}
+        refreshTree()
+    end)
+    clearButton.MouseButton1Click:Connect(function()
+        searchGeneration = searchGeneration + 1
+        searchBox.Text = ""
+        refreshTree()
+    end)
+    useSelection.MouseButton1Click:Connect(function()
+        if not selected or not selected.Parent then
+            selectionLabel.Text = "Select an instance first."
+            return
+        end
+        local ok, fullName = pcall(function() return selected:GetFullName() end)
+        if not ok then
+            selectionLabel.Text = "Could not read the selected instance path."
+            return
+        end
+        objectPathBox.Text = fullName
+        browserSelectedInstance = selected
+        browserSelectedPath = objectPathBox.Text
+        setSavedSetting("Instance path", objectPathBox.Text)
+        overlay:Destroy()
+    end)
+
+    refreshTree()
+end
+
+browseInstancesButton.MouseButton1Click:Connect(openInstanceBrowser)
+
 runButton.MouseButton1Click:Connect(function()
     if runButton:GetAttribute("Running") then return end
     local timeout = tonumber(timeoutBox.Text) or 10
@@ -739,11 +1090,15 @@ runButton.MouseButton1Click:Connect(function()
     local cacheInterval = math.max(1, tonumber(saveCacheBox.Text) or 56320)
     local targetObject = nil
     if objectPathBox.Text ~= "" then
-        local resolveError
-        targetObject, resolveError = resolveInstancePath(objectPathBox.Text)
-        if not targetObject then
-            setStatus("Instance path error: " .. tostring(resolveError), Theme.Red)
-            return
+        if browserSelectedInstance and objectPathBox.Text == browserSelectedPath then
+            targetObject = browserSelectedInstance
+        else
+            local resolveError
+            targetObject, resolveError = resolveInstancePath(objectPathBox.Text)
+            if not targetObject then
+                setStatus("Instance path error: " .. tostring(resolveError), Theme.Red)
+                return
+            end
         end
     end
 
