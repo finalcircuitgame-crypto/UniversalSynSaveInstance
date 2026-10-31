@@ -15,6 +15,7 @@ local GUI_NAME = "USSI_Executor_GUI"
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
@@ -185,8 +186,12 @@ local function makeToggle(parent, title, description, default)
     corner(knob, 20)
     local value = default == true
     local function render()
-        toggle.BackgroundColor3 = value and Theme.Accent or Theme.Border
-        knob.Position = value and UDim2.fromOffset(21, 3) or UDim2.fromOffset(3, 3)
+        TweenService:Create(toggle, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            BackgroundColor3 = value and Theme.Accent or Theme.Border
+        }):Play()
+        TweenService:Create(knob, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Position = value and UDim2.fromOffset(21, 3) or UDim2.fromOffset(3, 3)
+        }):Play()
     end
     toggle.MouseButton1Click:Connect(function()
         value = not value
@@ -199,6 +204,7 @@ local function makeDropdown(parent, title, values, default)
     local wrap = create("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 0, 57),
+        ClipsDescendants = false,
     }, parent)
     label(wrap, title, 12, Theme.Muted)
     local selected = default or values[1]
@@ -206,36 +212,91 @@ local function makeDropdown(parent, title, values, default)
     drop.Position = UDim2.fromOffset(0, 23)
     drop.TextXAlignment = Enum.TextXAlignment.Left
     create("UIPadding", { PaddingLeft = UDim.new(0, 10) }, drop)
+
     local menu
-    drop.MouseButton1Click:Connect(function()
-        if menu then menu:Destroy() menu = nil return end
+    local opened = false
+    local function closeMenu()
+        if not opened then return end
+        opened = false
+        drop.Text = selected .. "   ▾"
+        local targetHeight = 57
+        TweenService:Create(wrap, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Size = UDim2.new(1, 0, 0, targetHeight)
+        }):Play()
+        if menu then
+            local closingMenu = menu
+            local closeTween = TweenService:Create(closingMenu, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                Size = UDim2.new(1, 0, 0, 0),
+                BackgroundTransparency = 1
+            })
+            closeTween:Play()
+            closeTween.Completed:Connect(function()
+                if closingMenu and closingMenu.Parent then closingMenu:Destroy() end
+            end)
+            menu = nil
+        end
+    end
+
+    local function openMenu()
+        if opened then closeMenu() return end
+        opened = true
+        drop.Text = selected .. "   ▴"
+        local menuHeight = #values * 32
         menu = create("Frame", {
             BackgroundColor3 = Theme.Surface2,
-            Position = UDim2.new(0, 0, 1, 4),
-            Size = UDim2.new(1, 0, 0, #values * 30),
-            ZIndex = 20,
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(0, 59),
+            Size = UDim2.new(1, 0, 0, 0),
+            ZIndex = 30,
         }, wrap)
         corner(menu, 7)
         stroke(menu)
+        local list = create("UIListLayout", {
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding = UDim.new(0, 1),
+        }, menu)
+        create("UIPadding", {
+            PaddingTop = UDim.new(0, 4),
+            PaddingBottom = UDim.new(0, 4),
+        }, menu)
+
         for index, item in ipairs(values) do
             local choice = create("TextButton", {
+                BackgroundColor3 = Theme.Surface2,
                 BackgroundTransparency = 1,
-                Position = UDim2.fromOffset(0, (index - 1) * 30),
                 Size = UDim2.new(1, 0, 0, 30),
+                LayoutOrder = index,
                 Text = item,
-                TextColor3 = Theme.Text,
+                TextColor3 = item == selected and Theme.AccentHover or Theme.Text,
                 TextSize = 12,
                 Font = Enum.Font.Gotham,
-                ZIndex = 21,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                ZIndex = 31,
             }, menu)
+            create("UIPadding", { PaddingLeft = UDim.new(0, 11) }, choice)
+            choice.MouseEnter:Connect(function()
+                TweenService:Create(choice, TweenInfo.new(0.1), {BackgroundTransparency = 0.15}):Play()
+            end)
+            choice.MouseLeave:Connect(function()
+                TweenService:Create(choice, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
+            end)
             choice.MouseButton1Click:Connect(function()
                 selected = item
                 drop.Text = selected .. "   ▾"
-                menu:Destroy()
-                menu = nil
+                closeMenu()
             end)
         end
-    end)
+
+        TweenService:Create(wrap, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Size = UDim2.new(1, 0, 0, 61 + menuHeight)
+        }):Play()
+        TweenService:Create(menu, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(1, 0, 0, menuHeight),
+            BackgroundTransparency = 0
+        }):Play()
+    end
+
+    drop.MouseButton1Click:Connect(openMenu)
     return function() return selected end
 end
 
@@ -254,6 +315,10 @@ local Window = create("Frame", {
 }, ScreenGui)
 corner(Window, 14)
 stroke(Window, Theme.Border)
+local WindowScale = create("UIScale", {Scale = 0.94}, Window)
+TweenService:Create(WindowScale, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Scale = 1
+}):Play()
 
 local Topbar = create("Frame", {
     BackgroundColor3 = Theme.Surface,
@@ -269,7 +334,15 @@ local close = button(Topbar, "×", 30, false)
 close.Size = UDim2.fromOffset(32, 30)
 close.Position = UDim2.new(1, -44, 0, 14)
 close.TextSize = 20
-close.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+close.MouseButton1Click:Connect(function()
+    local closeTween = TweenService:Create(WindowScale, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Scale = 0.94
+    })
+    closeTween:Play()
+    closeTween.Completed:Connect(function()
+        if ScreenGui.Parent then ScreenGui:Destroy() end
+    end)
+end)
 
 local Sidebar = create("Frame", {
     BackgroundColor3 = Theme.Surface,
@@ -464,6 +537,92 @@ runButton.MouseButton1Click:Connect(function()
         runButton.Text = "Start save"
         runButton.BackgroundColor3 = Theme.Accent
     end)
+end)
+
+
+-- Drag the window from the title bar and resize it from the lower-right grip.
+local dragging = false
+local resizing = false
+local dragInput
+local dragStart
+local startPosition
+local startSize
+local MIN_WIDTH, MIN_HEIGHT = 620, 440
+
+local ResizeGrip = create("TextButton", {
+    Name = "ResizeGrip",
+    AutoButtonColor = false,
+    BackgroundColor3 = Theme.Surface2,
+    BackgroundTransparency = 0.15,
+    AnchorPoint = Vector2.new(1, 1),
+    Position = UDim2.new(1, -5, 1, -5),
+    Size = UDim2.fromOffset(20, 20),
+    Text = "◢",
+    TextColor3 = Theme.Muted,
+    TextSize = 13,
+    Font = Enum.Font.GothamBold,
+    ZIndex = 50,
+}, Window)
+corner(ResizeGrip, 5)
+
+local function beginDrag(input)
+    dragging = true
+    resizing = false
+    dragStart = input.Position
+    startPosition = Window.Position
+    dragInput = input
+end
+
+local function beginResize(input)
+    resizing = true
+    dragging = false
+    dragStart = input.Position
+    startSize = Window.Size
+    dragInput = input
+end
+
+Topbar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if input.Position.X < Topbar.AbsolutePosition.X + Topbar.AbsoluteSize.X - 58 then
+            beginDrag(input)
+        end
+    end
+end)
+
+ResizeGrip.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        beginResize(input)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if not dragInput then return end
+    local isMatchingInput = input == dragInput or input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch
+    if not isMatchingInput then return end
+
+    local delta = input.Position - dragStart
+    if dragging then
+        local camera = workspace.CurrentCamera
+        local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+        local halfW, halfH = Window.AbsoluteSize.X / 2, Window.AbsoluteSize.Y / 2
+        local x = math.clamp(startPosition.X.Offset + delta.X, -viewport.X / 2 + halfW, viewport.X / 2 - halfW)
+        local y = math.clamp(startPosition.Y.Offset + delta.Y, -viewport.Y / 2 + halfH, viewport.Y / 2 - halfH)
+        Window.Position = UDim2.new(startPosition.X.Scale, x, startPosition.Y.Scale, y)
+    elseif resizing then
+        local camera = workspace.CurrentCamera
+        local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+        local width = math.clamp(startSize.X.Offset + delta.X, MIN_WIDTH, viewport.X - 24)
+        local height = math.clamp(startSize.Y.Offset + delta.Y, MIN_HEIGHT, viewport.Y - 24)
+        Window.Size = UDim2.fromOffset(width, height)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+        resizing = false
+        dragInput = nil
+    end
 end)
 
 -- Default to Overview.
