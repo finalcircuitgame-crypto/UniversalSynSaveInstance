@@ -11,6 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
+local GUI_VERSION = "v1.3.1"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -327,7 +328,7 @@ local Topbar = create("Frame", {
 local topTitle = label(Topbar, "  USSI", 17, Theme.Text, Enum.Font.GothamBold)
 topTitle.Position = UDim2.fromOffset(15, 8)
 topTitle.Size = UDim2.new(0, 150, 0, 22)
-local topSubtitle = label(Topbar, "UNIVERSAL SYN SAVE INSTANCE", 9, Theme.Muted, Enum.Font.GothamMedium)
+local topSubtitle = label(Topbar, "UNIVERSAL SYN SAVE INSTANCE  •  " .. GUI_VERSION, 9, Theme.Muted, Enum.Font.GothamMedium)
 topSubtitle.Position = UDim2.fromOffset(17, 31)
 topSubtitle.Size = UDim2.new(0, 260, 0, 15)
 local close = button(Topbar, "×", 30, false)
@@ -466,7 +467,7 @@ local shutdown = makeToggle(behaviorCard, "Shutdown when done", "Close the game 
 
 local about = makeCard(aboutPage, "About this interface", "A standalone executor interface for the existing Universal Syn Save Instance project.")
 label(about, "Engine: saveinstance.luau", 12, Theme.Text)
-label(about, "UI: saveinstance-gui.luau", 12, Theme.Text)
+label(about, "UI: saveinstance-gui.luau  •  " .. GUI_VERSION, 12, Theme.Text)
 label(about, "This fork is unofficial and is not affiliated with Roblox Corporation.", 11, Theme.Muted)
 label(about, "UniversalSynSaveInstance https://discord.gg/wx4ThpAsmw", 10, Theme.Muted)
 local repoButton = button(about, "Open project repository", 34, false)
@@ -628,4 +629,4 @@ end)
 -- Default to Overview.
 switchPage("Overview")
 
-print("[USSI GUI] Loaded. UniversalSynSaveInstance https://discord.gg/wx4ThpAsmw")
+print("[USSI GUI] " .. GUI_VERSION .. " loaded. UniversalSynSaveInstance https://discord.gg/wx4ThpAsmw")
