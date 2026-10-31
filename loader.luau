@@ -13,9 +13,9 @@ local BASE_URL = "https://raw.githubusercontent.com/finalcircuitgame-crypto/Univ
 local MAIN_URL = BASE_URL .. "main/saveinstance-gui.luau"
 
 -- Stable fallback in case GitHub's main branch cannot be reached.
-local FALLBACK_URL = BASE_URL .. "3512ec62fd836d0a3058026790b2972faf204498/saveinstance-gui.luau"
+local FALLBACK_URL = BASE_URL .. "d83dbd73d28c47e7fb1de19377afca275006852a/saveinstance-gui.luau"
 
-local MIN_VERSION = { 1, 10, 0 }
+local MIN_VERSION = { 1, 11, 0 }
 
 local function log(message)
     print("[USSI Loader] " .. tostring(message))
