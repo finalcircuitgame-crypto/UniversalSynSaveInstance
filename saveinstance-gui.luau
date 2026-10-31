@@ -15,7 +15,6 @@ local GUI_NAME = "USSI_Executor_GUI"
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
@@ -101,16 +100,6 @@ local function button(parent, text, height, primary)
     }, parent)
     corner(b, 8)
     if not primary then stroke(b) end
-    b.MouseEnter:Connect(function()
-        TweenService:Create(b, TweenInfo.new(0.12), {
-            BackgroundColor3 = primary and Theme.AccentHover or Theme.Border
-        }):Play()
-    end)
-    b.MouseLeave:Connect(function()
-        TweenService:Create(b, TweenInfo.new(0.12), {
-            BackgroundColor3 = primary and Theme.Accent or Theme.Surface2
-        }):Play()
-    end)
     return b
 end
 
@@ -123,13 +112,13 @@ local function makeCard(parent, title, description)
     corner(card, 10)
     stroke(card)
     local padding = create("UIPadding", {
-        PaddingTop = UDim.new(0, 13),
-        PaddingBottom = UDim.new(0, 13),
-        PaddingLeft = UDim.new(0, 14),
-        PaddingRight = UDim.new(0, 14),
+        PaddingTop = UDim.new(0, 15),
+        PaddingBottom = UDim.new(0, 15),
+        PaddingLeft = UDim.new(0, 16),
+        PaddingRight = UDim.new(0, 16),
     }, card)
     local layout = create("UIListLayout", {
-        Padding = UDim.new(0, 9),
+        Padding = UDim.new(0, 11),
         SortOrder = Enum.SortOrder.LayoutOrder,
     }, card)
     label(card, title, 14, Theme.Text, Enum.Font.GothamSemibold)
@@ -196,12 +185,8 @@ local function makeToggle(parent, title, description, default)
     corner(knob, 20)
     local value = default == true
     local function render()
-        TweenService:Create(toggle, TweenInfo.new(0.12), {
-            BackgroundColor3 = value and Theme.Accent or Theme.Border
-        }):Play()
-        TweenService:Create(knob, TweenInfo.new(0.12), {
-            Position = value and UDim2.fromOffset(21, 3) or UDim2.fromOffset(3, 3)
-        }):Play()
+        toggle.BackgroundColor3 = value and Theme.Accent or Theme.Border
+        knob.Position = value and UDim2.fromOffset(21, 3) or UDim2.fromOffset(3, 3)
     end
     toggle.MouseButton1Click:Connect(function()
         value = not value
@@ -263,7 +248,7 @@ local ScreenGui = create("ScreenGui", {
 local Window = create("Frame", {
     AnchorPoint = Vector2.new(0.5, 0.5),
     Position = UDim2.fromScale(0.5, 0.5),
-    Size = UDim2.fromOffset(760, 520),
+    Size = UDim2.fromOffset(800, 560),
     BackgroundColor3 = Theme.Background,
     ClipsDescendants = true,
 }, ScreenGui)
@@ -308,7 +293,23 @@ local Content = create("Frame", {
 }, Window)
 
 local pages = {}
+local navButtons = {}
 local activePage
+
+local function switchPage(name)
+    local page = pages[name]
+    if not page then return end
+    if activePage then activePage.Visible = false end
+    activePage = page
+    page.Visible = true
+
+    for pageName, navButton in pairs(navButtons) do
+        local selected = pageName == name
+        navButton.BackgroundColor3 = selected and Theme.Accent or Theme.Surface2
+        navButton.TextColor3 = selected and Color3.new(1, 1, 1) or Theme.Muted
+    end
+end
+
 local function makePage(name)
     local page = create("ScrollingFrame", {
         Name = name,
@@ -325,14 +326,11 @@ local function makePage(name)
     pages[name] = page
     local nav = button(Sidebar, name, 36, false)
     nav.LayoutOrder = #pages
+    nav.TextXAlignment = Enum.TextXAlignment.Left
+    nav.TextColor3 = Theme.Muted
+    navButtons[name] = nav
     nav.MouseButton1Click:Connect(function()
-        if activePage then activePage.Visible = false end
-        activePage = page
-        page.Visible = true
-        for pageName, pageButton in pairs(pages) do
-            -- Nav colors are handled by the selected page's visibility.
-        end
-        nav.BackgroundColor3 = Theme.Accent
+        switchPage(name)
     end)
     return page
 end
@@ -348,9 +346,7 @@ local statusLabel = label(home, "●  " .. statusText, 12, Theme.Green, Enum.Fon
 local hero = makeCard(home, "Save your experience", "Configure a save and run it through the original USSI engine. The interface does not replace or modify the serializer.")
 local heroButton = button(hero, "Open save settings  →", 38, true)
 heroButton.MouseButton1Click:Connect(function()
-    if activePage then activePage.Visible = false end
-    activePage = savePage
-    savePage.Visible = true
+    switchPage("Save")
 end)
 
 local info = makeCard(home, "Session", "Current place details")
@@ -358,33 +354,40 @@ label(info, "Place: " .. game.Name, 12, Theme.Text)
 label(info, "Place ID: " .. tostring(game.PlaceId), 11, Theme.Muted)
 label(info, "Job ID: " .. (game.JobId ~= "" and game.JobId or "Studio / local session"), 10, Theme.Muted)
 
-local format = makeDropdown(savePage, "Output format", {"Binary (.rbxl / .rbxm)", "XML (.rbxlx / .rbxmx)"}, "Binary (.rbxl / .rbxm)")
-local mode = makeDropdown(savePage, "Save mode", {"optimized", "full", "scripts"}, "optimized")
-local compression = makeDropdown(savePage, "Compression", {"zstd", "lz4", "None"}, "zstd")
-local pathBox = makeInput(savePage, "File path", "workspace/PlaceName", "")
-local safeMode = makeToggle(savePage, "Safe mode", "Disconnects the local player while saving; enables protective save settings.", false)
-local showStatus = makeToggle(savePage, "Show status", "Display save progress on screen.", true)
-local readme = makeToggle(savePage, "Include README", "Add save details and warnings to the output.", true)
-local avoidOverwrite = makeToggle(savePage, "Avoid overwriting", "Append a number when a file with the same name exists.", true)
+local outputCard = makeCard(savePage, "OUTPUT", "Choose the file type, save mode, compression, and destination.")
+local format = makeDropdown(outputCard, "Output format", {"Binary (.rbxl / .rbxm)", "XML (.rbxlx / .rbxmx)"}, "Binary (.rbxl / .rbxm)")
+local mode = makeDropdown(outputCard, "Save mode", {"optimized", "full", "scripts"}, "optimized")
+local compression = makeDropdown(outputCard, "Compression", {"zstd", "lz4", "None"}, "zstd")
+local pathBox = makeInput(outputCard, "File path", "workspace/PlaceName", "")
+local saveOptionsCard = makeCard(savePage, "SAVE OPTIONS", "Control how the experience is captured and written.")
+local safeMode = makeToggle(saveOptionsCard, "Safe mode", "Disconnects the local player while saving; enables protective save settings.", false)
+local showStatus = makeToggle(saveOptionsCard, "Show status", "Display save progress on screen.", true)
+local readme = makeToggle(saveOptionsCard, "Include README", "Add save details and warnings to the output.", true)
+local avoidOverwrite = makeToggle(saveOptionsCard, "Avoid overwriting", "Append a number when a file with the same name exists.", true)
 
-local decompile = makeToggle(optionsPage, "Decompile scripts", "Attempt to recover readable source for scripts.", true)
-local bytecode = makeToggle(optionsPage, "Save bytecode", "Include compiled bytecode when the executor supports it.", false)
-local recoverAssets = makeToggle(optionsPage, "Recover published scripts", "Try to recover original source from published script assets.", true)
-local scriptCache = makeToggle(optionsPage, "Cache decompilation", "Reuse decompiled source during this and later runs.", true)
-local nilInstances = makeToggle(optionsPage, "Save nil instances", "Include unparented instances when getnilinstances is available.", false)
-local saveCharacters = makeToggle(optionsPage, "Save player characters", "Include player characters that are normally skipped.", false)
-local ignoreDefaults = makeToggle(optionsPage, "Ignore default properties", "Reduce XML size by skipping properties at their class defaults.", true)
-local ignoreSpecial = makeToggle(optionsPage, "Ignore special properties", "Avoid executor hidden-property reads.", false)
-local antiIdle = makeToggle(optionsPage, "Anti-idle", "Prevent the normal idle kick while the save is running.", true)
+local scriptCard = makeCard(optionsPage, "SCRIPT HANDLING", "Choose how scripts and their source are captured.")
+local decompile = makeToggle(scriptCard, "Decompile scripts", "Attempt to recover readable source for scripts.", true)
+local bytecode = makeToggle(scriptCard, "Save bytecode", "Include compiled bytecode when the executor supports it.", false)
+local recoverAssets = makeToggle(scriptCard, "Recover published scripts", "Try to recover original source from published script assets.", true)
+local scriptCache = makeToggle(scriptCard, "Cache decompilation", "Reuse decompiled source during this and later runs.", true)
+local instanceCard = makeCard(optionsPage, "INSTANCE CAPTURE", "Include additional objects that are normally skipped.")
+local nilInstances = makeToggle(instanceCard, "Save nil instances", "Include unparented instances when getnilinstances is available.", false)
+local saveCharacters = makeToggle(instanceCard, "Save player characters", "Include player characters that are normally skipped.", false)
+local propertyCard = makeCard(optionsPage, "PROPERTY HANDLING", "Adjust how instance properties are read and stored.")
+local ignoreDefaults = makeToggle(propertyCard, "Ignore default properties", "Reduce XML size by skipping properties at their class defaults.", true)
+local ignoreSpecial = makeToggle(propertyCard, "Ignore special properties", "Avoid executor hidden-property reads.", false)
+local antiIdle = makeToggle(propertyCard, "Anti-idle", "Prevent the normal idle kick while the save is running.", true)
 
-local timeoutBox = makeInput(advancedPage, "Decompile timeout (seconds)", "10", "10")
-local bytecodeTimeoutBox = makeInput(advancedPage, "Bytecode timeout (seconds)", "3", "3")
-local compressionLevelBox = makeInput(advancedPage, "Compression level (-7 to 22)", "9", "9")
-local saveCacheBox = makeInput(advancedPage, "Save cache interval", "56320", "56320")
-local copyClipboard = makeToggle(advancedPage, "Copy to clipboard", "Requires executor clipboard support. Best for small saves.", false)
-local isolatePlayer = makeToggle(advancedPage, "Isolate local player", "Save the local player as a Folder instead of a Player instance.", false)
-local isolateStarter = makeToggle(advancedPage, "Isolate StarterPlayer", "Move StarterPlayer children into a top-level folder.", false)
-local shutdown = makeToggle(advancedPage, "Shutdown when done", "Close the game after a successful save.", false)
+local tuningCard = makeCard(advancedPage, "TIMEOUTS & COMPRESSION", "Advanced performance and serialization settings.")
+local timeoutBox = makeInput(tuningCard, "Decompile timeout (seconds)", "10", "10")
+local bytecodeTimeoutBox = makeInput(tuningCard, "Bytecode timeout (seconds)", "3", "3")
+local compressionLevelBox = makeInput(tuningCard, "Compression level (-7 to 22)", "9", "9")
+local saveCacheBox = makeInput(tuningCard, "Save cache interval", "56320", "56320")
+local behaviorCard = makeCard(advancedPage, "OUTPUT & SESSION", "Optional executor and player handling features.")
+local copyClipboard = makeToggle(behaviorCard, "Copy to clipboard", "Requires executor clipboard support. Best for small saves.", false)
+local isolatePlayer = makeToggle(behaviorCard, "Isolate local player", "Save the local player as a Folder instead of a Player instance.", false)
+local isolateStarter = makeToggle(behaviorCard, "Isolate StarterPlayer", "Move StarterPlayer children into a top-level folder.", false)
+local shutdown = makeToggle(behaviorCard, "Shutdown when done", "Close the game after a successful save.", false)
 
 local about = makeCard(aboutPage, "About this interface", "A standalone executor interface for the existing Universal Syn Save Instance project.")
 label(about, "Engine: saveinstance.luau", 12, Theme.Text)
@@ -461,30 +464,7 @@ runButton.MouseButton1Click:Connect(function()
     end)
 end)
 
--- Drag the window from its title bar.
-do
-    local dragging = false
-    local dragStart, startPosition
-    Topbar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPosition = Window.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            Window.Position = UDim2.new(startPosition.X.Scale, startPosition.X.Offset + delta.X, startPosition.Y.Scale, startPosition.Y.Offset + delta.Y)
-        end
-    end)
-end
-
 -- Default to Overview.
-activePage = home
-home.Visible = true
+switchPage("Overview")
 
 print("[USSI GUI] Loaded. UniversalSynSaveInstance https://discord.gg/wx4ThpAsmw")
