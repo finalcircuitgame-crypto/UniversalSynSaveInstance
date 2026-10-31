@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.13.0"
+local GUI_VERSION = "v1.13.1"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -708,7 +708,11 @@ local function makeDropdown(parent, title, values, default, onChanged)
 
     drop.MouseButton1Click:Connect(openMenu)
     if onChanged then onChanged(selected) end
-    local getter = function() return selected end
+    local getter = setmetatable({}, {
+        __call = function()
+            return selected
+        end,
+    })
     getter.SetValues = function(newValues, preferred)
         if type(newValues) ~= "table" or #newValues == 0 then
             newValues = { "None saved" }
