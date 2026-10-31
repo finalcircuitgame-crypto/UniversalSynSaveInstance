@@ -87,14 +87,6 @@ end)
 
 local StartupGui, StartupCard, StartupTitle, StartupDetail, StartupFill
 
-local function setStartupStatus(title, detail, progress)
-    if not StartupGui then return end
-    StartupTitle.Text = title
-    StartupDetail.Text = detail
-    local amount = math.clamp(progress or 0.12, 0, 1)
-    tween -- placeholder
-end
-
 local function destroyStartupScreen()
     if not StartupGui then return end
     local gui = StartupGui
@@ -248,7 +240,6 @@ local function updateStartupProgress(progress)
 end
 
 createStartupScreen()
-setStartupStatus = setStartupStatus
 
 local function setStartupStatus(title, detail, progress)
     if not StartupGui then return end
