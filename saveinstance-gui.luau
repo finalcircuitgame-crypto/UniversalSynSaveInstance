@@ -295,6 +295,7 @@ local Content = create("Frame", {
 local pages = {}
 local navButtons = {}
 local activePage
+local navOrder = 0
 
 local function switchPage(name)
     local page = pages[name]
@@ -325,7 +326,8 @@ local function makePage(name)
     create("UIListLayout", { Padding = UDim.new(0, 11), SortOrder = Enum.SortOrder.LayoutOrder }, page)
     pages[name] = page
     local nav = button(Sidebar, name, 36, false)
-    nav.LayoutOrder = #pages
+    navOrder = navOrder + 1
+    nav.LayoutOrder = navOrder
     nav.TextXAlignment = Enum.TextXAlignment.Left
     nav.TextColor3 = Theme.Muted
     navButtons[name] = nav
