@@ -34,7 +34,21 @@ In the GUI's **Save** tab, use **Custom output name** to name the exported file.
 
 ## Loading and save progress
 
-GUI v1.11.0 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
+GUI v1.13.0 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
+
+## GUI v1.13.0 feature set
+
+The GUI adds 20 categorized workflow features:
+
+**Visuals (5):** five color themes, adjustable interface scale, compact layout, reduced motion, and window opacity.
+
+**Optimization (5):** Balanced/Fastest/Smaller output/Maximum detail save profiles, configurable appendfile chunk size (1–16 MB), configurable Explorer search result limit, configurable search yield interval, and optional alphabetical sorting.
+
+**Miscellaneous (5):** minimize/restore with `Left Ctrl + Left Shift + U`, remembered window size and position, reset-layout button, save-completion toast notifications, and a close guard while saving.
+
+**Useful tools (5):** validate an Instance path, recent target history, persistent favorite targets, copy an Instance path, and use the selected Instance name as the output filename.
+
+Save profiles affect the next save run and may override individual options for that run. The configurable chunk size only affects the engine's `appendfile` output path; it is clamped by the engine to 256 KB–16 MB.
 
 # Universal Syn Save Instance
 
