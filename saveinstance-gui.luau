@@ -710,6 +710,7 @@ local ScreenGui = create("ScreenGui", {
 }, GUI_PARENT)
 
 local saveRunning = false
+local closeGuardToggle
 local showToast
 
 local ToastLayer = create("Frame", {
@@ -722,7 +723,7 @@ local ToastLayer = create("Frame", {
 }, ScreenGui)
 
 showToast = function(message, isError)
-    if not getSavedSetting("Save completion notifications", true, "boolean") and not isError then return end
+    if not getSavedSetting("Save completion notifications", true, "boolean") then return end
     local existing = ToastLayer:FindFirstChild("Toast")
     if existing then existing:Destroy() end
     local toast = create("Frame", {
@@ -986,7 +987,6 @@ local function applyWindowScale(value)
     setSavedSetting("UI scale", tostring(amount) .. "%")
 end
 
-themeDropdown = nil
 local statusText = "Ready"
 local statusLabel = label(home, "●  " .. statusText, 12, Theme.Green, Enum.Font.GothamMedium)
 local hero = makeCard(home, "Save your experience", "Configure a save and run it through the original USSI engine. The interface does not replace or modify the serializer.")
@@ -1098,6 +1098,18 @@ end)
 local opacityDropdown = makeDropdown(appearanceCard, "Window opacity", {
     "100%", "96%", "92%", "88%"
 }, getSavedSetting("Window opacity", "100%", "string"))
+themeDropdown -- selected theme is applied by the callback below
+
+
+themeDropdown.SetValues({ "Midnight Violet", "Ocean Blue", "Emerald", "Rose", "Amber" }, CurrentThemeName)
+local function refreshVisualSettings()
+    applyThemePreset(themeDropdown())
+    applyWindowScale(scaleDropdown())
+    local opacity = tonumber(opacityDropdown():match("%d+")) or 100
+    Window.BackgroundTransparency = 1 - math.clamp(opacity, 80, 100) / 100
+    setSavedSetting("Window opacity", tostring(opacity) .. "%")
+end
+
 
 -- OPTIMIZATION: five controls for save and Explorer performance.
 local optimizationCard = makeCard(optimizationPage, "SAVE PRESETS", "Choose a practical balance. The preset modifies only the listed save options for the next run.")
@@ -1109,18 +1121,32 @@ local writeChunkBox = makeInput(optimizationCard, "Write chunk size (MB, 1-16)",
 local explorerPerformanceCard = makeCard(optimizationPage, "EXPLORER PERFORMANCE", "Tune how much the instance browser searches and how it displays results.")
 local explorerResultLimit = makeDropdown(explorerPerformanceCard, "Maximum search results", {
     "50", "100", "250", "500"
-}, getSavedSetting("Explorer max results", "120", "string"))
+}, getSavedSetting("Explorer max results", "100", "string"))
 local explorerYieldInterval = makeDropdown(explorerPerformanceCard, "Search yield interval", {
     "500", "1000", "2500", "5000"
 }, getSavedSetting("Explorer yield interval", "2500", "string"))
 local explorerSort = makeToggle(explorerPerformanceCard, "Sort Explorer alphabetically", "Alphabetical sorting is easier to scan; disabling it can speed up large tree expansions.", true)
+
+themeDropdown.SetValues({ "Midnight Violet", "Ocean Blue", "Emerald", "Rose", "Amber" }, CurrentThemeName)
+themeDropdown -- UI control for active palette
+themeDropdown = themeDropdown
+
 
 -- MISC: five window and workflow quality-of-life controls.
 local windowCard = makeCard(miscPage, "WINDOW BEHAVIOR", "Control how the interface opens, hides, and remembers its layout.")
 local hotkeyInfo = label(windowCard, "Toggle visibility: Left Ctrl + Left Shift + U", 11, Theme.Muted)
 local resetWindowButton = button(windowCard, "Reset window position and size", 34, false)
 local notificationsToggle = makeToggle(windowCard, "Save completion notifications", "Show a small in-GUI toast when a save finishes or fails.", true)
-local closeGuardToggle = makeToggle(windowCard, "Prevent closing during a save", "Ignore the close button while the serializer is running.", true)
+closeGuardToggle = makeToggle(windowCard, "Prevent closing during a save", "Ignore the close button while the serializer is running.", true)
+resetWindowButton.MouseButton1Click:Connect(function()
+    Window.Size = UDim2.fromOffset(800, 560)
+    Window.Position = UDim2.fromScale(0.5, 0.5)
+    setSavedSetting("Window width", 800)
+    setSavedSetting("Window height", 560)
+    setSavedSetting("Window X", 0)
+    setSavedSetting("Window Y", 0)
+    if showToast then showToast("Window layout reset.", false) end
+end)
 local windowTips = label(windowCard, "Use the small dash in the title bar to minimize. The hotkey restores the GUI.", 10, Theme.Muted)
 windowTips.TextWrapped = true
 
@@ -1147,6 +1173,20 @@ local repoButton = button(about, "Open project repository", 34, false)
 repoButton.MouseButton1Click:Connect(function()
     if setclipboard then pcall(setclipboard, "https://github.com/finalcircuitgame-crypto/UniversalSynSaveInstance") end
 end)
+
+themeDropdown -- Apply default theme at initial render.
+applyThemePreset(themeDropdown())
+applyWindowScale(scaleDropdown())
+local startupOpacity = tonumber(opacityDropdown():match("%d+")) or 100
+Window.BackgroundTransparency = 1 - math.clamp(startupOpacity, 80, 100) / 100
+themeDropdown -- retained for live color theme selection
+
+local function saveWindowGeometry()
+    setSavedSetting("Window width", Window.Size.X.Offset)
+    setSavedSetting("Window height", Window.Size.Y.Offset)
+    setSavedSetting("Window X", Window.Position.X.Offset)
+    setSavedSetting("Window Y", Window.Position.Y.Offset)
+end
 
 local runCard = makeCard(savePage, "Ready to save?", "Check your settings before starting. Large experiences can take a while and may use substantial memory.")
 local runButton = button(runCard, "Start save", 42, true)
@@ -1268,6 +1308,33 @@ local function resolveInstancePath(path)
 
     return current
 end
+
+local function addRecentTarget(path)
+    if type(path) ~= "string" or path == "" then return end
+    local recent = getSavedSetting("Recent instance paths", {}, "table")
+    local nextList = { path }
+    for _, item in ipairs(recent) do
+        if item ~= path and #nextList < 10 then
+            nextList[#nextList + 1] = item
+        end
+    end
+    setSavedSetting("Recent instance paths", nextList)
+    recentTargetsDropdown.SetValues(nextList, path)
+end
+
+local function addFavoriteTarget(path)
+    if type(path) ~= "string" or path == "" then return false end
+    local favorites = getSavedSetting("Favorite instance paths", {}, "table")
+    for _, item in ipairs(favorites) do
+        if item == path then return false end
+    end
+    favorites[#favorites + 1] = path
+    setSavedSetting("Favorite instance paths", favorites)
+    favoriteTargetsDropdown.SetValues(favorites, path)
+    return true
+end
+
+
 
 -- Explorer-style browser for selecting an Instance without typing its path.
 local browserSelectedInstance = nil
@@ -1397,15 +1464,40 @@ local function openInstanceBrowser()
 
     local selectionLabel = label(panel, "Selected: none", 10, Theme.Muted)
     selectionLabel.Position = UDim2.fromOffset(18, 411)
-    selectionLabel.Size = UDim2.new(1, -185, 0, 20)
+    selectionLabel.Size = UDim2.new(1, -400, 0, 20)
     selectionLabel.TextTruncate = Enum.TextTruncate.AtEnd
     selectionLabel.ZIndex = 63
+
+    local favoriteSelection = create("TextButton", {
+        AutoButtonColor = false,
+        BackgroundColor3 = Theme.Surface2,
+        Position = UDim2.new(1, -365, 1, -43),
+        Size = UDim2.fromOffset(100, 30),
+        Text = "★ Favorite",
+        TextColor3 = Theme.Text,
+        TextSize = 11,
+        Font = Enum.Font.GothamMedium,
+        ZIndex = 64,
+    }, panel)
+    corner(favoriteSelection, 7)
+    local copySelection = create("TextButton", {
+        AutoButtonColor = false,
+        BackgroundColor3 = Theme.Surface2,
+        Position = UDim2.new(1, -255, 1, -43),
+        Size = UDim2.fromOffset(82, 30),
+        Text = "Copy path",
+        TextColor3 = Theme.Text,
+        TextSize = 11,
+        Font = Enum.Font.GothamMedium,
+        ZIndex = 64,
+    }, panel)
+    corner(copySelection, 7)
 
     local useSelection = create("TextButton", {
         AutoButtonColor = false,
         BackgroundColor3 = Theme.Accent,
-        Position = UDim2.new(1, -153, 1, -43),
-        Size = UDim2.fromOffset(135, 30),
+        Position = UDim2.new(1, -160, 1, -43),
+        Size = UDim2.fromOffset(142, 30),
         Text = "Use selected",
         TextColor3 = Color3.new(1, 1, 1),
         TextSize = 12,
@@ -1504,13 +1596,17 @@ local function openInstanceBrowser()
     refreshTree = function()
         clearTreeRows()
         local roots = game:GetChildren()
-        table.sort(roots, function(a, b) return string.lower(a.Name) < string.lower(b.Name) end)
+        if explorerSort() then
+            table.sort(roots, function(a, b) return string.lower(a.Name) < string.lower(b.Name) end)
+        end
 
         local function addBranch(instance, depth)
             addTreeRow(instance, depth, false)
             if expanded[instance] then
                 local children = instance:GetChildren()
-                table.sort(children, function(a, b) return string.lower(a.Name) < string.lower(b.Name) end)
+                if explorerSort() then
+                    table.sort(children, function(a, b) return string.lower(a.Name) < string.lower(b.Name) end)
+                end
                 for _, child in ipairs(children) do
                     addBranch(child, depth + 1)
                 end
@@ -1541,13 +1637,15 @@ local function openInstanceBrowser()
             local descendants = game:GetDescendants()
             local matches = {}
             local scanned = 0
+            local maxResults = tonumber(explorerResultLimit()) or 100
+            local yieldInterval = tonumber(explorerYieldInterval()) or 2500
             for _, instance in ipairs(descendants) do
                 scanned = scanned + 1
                 if string.find(string.lower(instance.Name), query, 1, true) then
                     table.insert(matches, instance)
-                    if #matches >= 120 then break end
+                    if #matches >= maxResults then break end
                 end
-                if scanned % 2500 == 0 then
+                if scanned % yieldInterval == 0 then
                     task.wait()
                     if generation ~= searchGeneration or not overlay.Parent then return end
                 end
@@ -1555,6 +1653,9 @@ local function openInstanceBrowser()
 
             if generation ~= searchGeneration or not overlay.Parent then return end
             clearTreeRows()
+            if explorerSort() then
+                table.sort(matches, function(a, b) return string.lower(a.Name) < string.lower(b.Name) end)
+            end
             if #matches == 0 then
                 local empty = label(tree, "No matching instances found.", 11, Theme.Muted)
                 empty.LayoutOrder = 1
@@ -1583,6 +1684,31 @@ local function openInstanceBrowser()
         searchBox.Text = ""
         refreshTree()
     end)
+    favoriteSelection.MouseButton1Click:Connect(function()
+        if not selected then
+            selectionLabel.Text = "Select an instance first."
+            return
+        end
+        local ok, fullName = pcall(function() return selected:GetFullName() end)
+        if not ok then return end
+        local added = addFavoriteTarget(fullName)
+        selectionLabel.Text = added and "Added to favorites: " .. fullName or "Already in favorites: " .. fullName
+    end)
+
+    copySelection.MouseButton1Click:Connect(function()
+        if not selected then
+            selectionLabel.Text = "Select an instance first."
+            return
+        end
+        local ok, fullName = pcall(function() return selected:GetFullName() end)
+        if ok and type(setclipboard) == "function" then
+            local copied = pcall(setclipboard, fullName)
+            selectionLabel.Text = copied and "Copied: " .. fullName or "Clipboard copy failed."
+        else
+            selectionLabel.Text = "Clipboard function is unavailable."
+        end
+    end)
+
     useSelection.MouseButton1Click:Connect(function()
         if not selected or not selected.Parent then
             selectionLabel.Text = "Select an instance first."
@@ -1597,6 +1723,7 @@ local function openInstanceBrowser()
         browserSelectedInstance = selected
         browserSelectedPath = objectPathBox.Text
         setSavedSetting("Instance path", objectPathBox.Text)
+        addRecentTarget(fullName)
         overlay:Destroy()
     end)
 
@@ -1604,6 +1731,90 @@ local function openInstanceBrowser()
 end
 
 browseInstancesButton.MouseButton1Click:Connect(openInstanceBrowser)
+
+validatePathButton.MouseButton1Click:Connect(function()
+    local target, err = resolveInstancePath(objectPathBox.Text)
+    if not target then
+        objectPathStatus.Text = "Invalid path: " .. tostring(err)
+        objectPathStatus.TextColor3 = Theme.Red
+        if showToast then showToast("Instance path could not be resolved.", true) end
+        return
+    end
+    local fullName = target:GetFullName()
+    local childCount = #target:GetChildren()
+    objectPathStatus.Text = string.format("Valid %s • %d direct children • %s", target.ClassName, childCount, fullName)
+    objectPathStatus.TextColor3 = Theme.Green
+    addRecentTarget(fullName)
+end)
+
+useRecentTargetButton.MouseButton1Click:Connect(function()
+    local path = recentTargetsDropdown()
+    if path and path ~= "No recent targets" then
+        objectPathBox.Text = path
+        objectPathStatus.Text = "Recent target loaded. Validate before saving."
+        objectPathStatus.TextColor3 = Theme.Muted
+    end
+end)
+
+useFavoriteTargetButton.MouseButton1Click:Connect(function()
+    local path = favoriteTargetsDropdown()
+    if path and path ~= "No favorites saved" then
+        objectPathBox.Text = path
+        objectPathStatus.Text = "Favorite loaded. Validate before saving."
+        objectPathStatus.TextColor3 = Theme.Muted
+    end
+end)
+
+addFavoriteButton.MouseButton1Click:Connect(function()
+    if objectPathBox.Text == "" then
+        if showToast then showToast("Enter or select an instance path first.", true) end
+        return
+    end
+    local target, err = resolveInstancePath(objectPathBox.Text)
+    if not target then
+        objectPathStatus.Text = "Invalid path: " .. tostring(err)
+        objectPathStatus.TextColor3 = Theme.Red
+        return
+    end
+    local fullName = target:GetFullName()
+    local added = addFavoriteTarget(fullName)
+    if showToast then
+        showToast(added and "Added instance to favorites." or "That instance is already a favorite.", false)
+    end
+end)
+
+copyTargetPathButton.MouseButton1Click:Connect(function()
+    if objectPathBox.Text == "" then
+        if showToast then showToast("There is no instance path to copy.", true) end
+        return
+    end
+    if type(setclipboard) == "function" then
+        local ok = pcall(setclipboard, objectPathBox.Text)
+        if showToast then showToast(ok and "Instance path copied." or "Clipboard copy failed.", not ok) end
+    else
+        if showToast then showToast("This executor does not expose setclipboard.", true) end
+    end
+end)
+
+nameFromTargetButton.MouseButton1Click:Connect(function()
+    local rawPath = objectPathBox.Text:match("^%s*(.-)%s*$")
+    if rawPath == "" then
+        if showToast then showToast("Select an instance first.", true) end
+        return
+    end
+    local target, err = resolveInstancePath(rawPath)
+    if not target then
+        if showToast then showToast("Invalid target path: " .. tostring(err), true) end
+        return
+    end
+    outputNameBox.Text = target.Name
+    setSavedSetting("Custom output name", target.Name)
+    if showToast then showToast("Output name set to " .. target.Name .. ".", false) end
+end)
+
+themeDropdown -- references the existing theme dropdown
+themeDropdown.SetValues({ "Midnight Violet", "Ocean Blue", "Emerald", "Rose", "Amber" }, CurrentThemeName)
+
 
 runButton.MouseButton1Click:Connect(function()
     if runButton:GetAttribute("Running") then return end
@@ -1628,6 +1839,11 @@ runButton.MouseButton1Click:Connect(function()
     local selectedFormat = format()
     local isBinary = selectedFormat == "RBXL - Place (Binary)" or selectedFormat == "RBXM - Model (Binary)"
     local isModel = selectedFormat == "RBXM - Model (Binary)" or selectedFormat == "RBXMX - Model (XML)"
+
+    if targetObject then
+        local ok, targetName = pcall(function() return targetObject:GetFullName() end)
+        if ok then addRecentTarget(targetName) end
+    end
 
     local compressionMode = compression()
     if compressionMode == "None" then compressionMode = false end
@@ -1659,6 +1875,7 @@ runButton.MouseButton1Click:Connect(function()
         IsolateStarterPlayer = isolateStarter(),
         ShutdownWhenDone = shutdown(),
         SaveCacheInterval = cacheInterval,
+        WriteChunkSize = math.clamp(tonumber(writeChunkBox.Text) or 4, 1, 16) * 1024 * 1024,
 
         -- Additional supported engine options.
         -- Leave these nil unless enabled so SafeMode can apply its own defaults.
@@ -1673,6 +1890,27 @@ runButton.MouseButton1Click:Connect(function()
         IgnorePropertiesOfNotScriptsOnScriptsMode = scriptOnlyProperties(),
         Anonymous = anonymize(),
     }
+
+    local selectedProfile = savePresetDropdown()
+    if selectedProfile == "Fastest save" then
+        options.Decompile = false
+        options.SaveBytecode = false
+        options.RecoverScriptsFromAssets = false
+        options.CompressionMode = "lz4"
+        options.CompressionLevel = 1
+    elseif selectedProfile == "Smaller output" then
+        options.CompressionMode = "zstd"
+        options.CompressionLevel = 22
+        options.SharedBinaryStrings = true
+        options.IgnoreDefaultProperties = true
+    elseif selectedProfile == "Maximum detail" then
+        options.Decompile = true
+        options.SaveBytecode = true
+        options.RecoverScriptsFromAssets = true
+        options.IgnoreDefaultProperties = false
+    end
+
+    saveRunning = true
     runButton:SetAttribute("Running", true)
     runButton.Text = "Saving..."
     runButton.BackgroundColor3 = Theme.Border
@@ -1681,10 +1919,13 @@ runButton.MouseButton1Click:Connect(function()
         local success, err = pcall(synsaveinstance, options)
         if success then
             setStatus("Save routine finished. Check the output file.", Theme.Green, 1)
+            if showToast then showToast("Save completed successfully.", false) end
         else
             setStatus("Save failed: " .. tostring(err), Theme.Red)
+            if showToast then showToast("Save failed. Check the F9 console.", true) end
             warn("[USSI GUI] Save failed: " .. tostring(err))
         end
+        saveRunning = false
         runButton:SetAttribute("Running", false)
         runButton.Text = "Start save"
         runButton.BackgroundColor3 = Theme.Accent
