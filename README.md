@@ -34,9 +34,9 @@ In the GUI's **Save** tab, use **Custom output name** to name the exported file.
 
 ## Loading and save progress
 
-GUI v1.13.0 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
+GUI v1.13.1 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
 
-## GUI v1.13.0 feature set
+## GUI v1.13.1 feature set
 
 The GUI adds 20 categorized workflow features:
 
