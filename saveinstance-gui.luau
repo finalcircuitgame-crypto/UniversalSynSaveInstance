@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.13.1"
+local GUI_VERSION = "v1.13.2"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
