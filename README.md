@@ -32,6 +32,10 @@ The loader adds a cache-busting query, checks the downloaded GUI version, falls 
 
 In the GUI's **Save** tab, use **Custom output name** to name the exported file. For example, entering `Night 1 Cutscene` with **RBXL - Place (Binary)** selected saves as `Night 1 Cutscene.rbxl`. Leave the field empty to use the automatic name. The selected format supplies the extension.
 
+## Loading and save progress
+
+GUI v1.11.0 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
+
 # Universal Syn Save Instance
 
 Or shortly USSI, a project aimed at resurrecting saveinstance function from Synapse X.<br />
