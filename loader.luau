@@ -4,8 +4,10 @@
     validates the downloaded source, and reports fetch/compile/runtime errors.
 
     Usage:
+        local HttpService = game:GetService("HttpService")
+        local cacheBust = HttpService:GenerateGUID(false)
         loadstring(game:HttpGet(
-            "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/loader.luau"
+            "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/loader.luau?_ussi_nocache=" .. cacheBust
         ))()
 ]]
 
