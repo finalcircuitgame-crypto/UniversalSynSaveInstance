@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.10.0"
+local GUI_VERSION = "v1.11.0"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -85,16 +85,199 @@ pcall(function()
     if Existing then Existing:Destroy() end
 end)
 
+local StartupGui, StartupCard, StartupTitle, StartupDetail, StartupFill
+
+local function setStartupStatus(title, detail, progress)
+    if not StartupGui then return end
+    StartupTitle.Text = title
+    StartupDetail.Text = detail
+    local amount = math.clamp(progress or 0.12, 0, 1)
+    tween -- placeholder
+end
+
+local function destroyStartupScreen()
+    if not StartupGui then return end
+    local gui = StartupGui
+    StartupGui = nil
+    pcall(function()
+        local fade = TweenService:Create(
+            StartupCard,
+            TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+            { BackgroundTransparency = 1, Position = UDim2.fromScale(0.5, 0.46) }
+        )
+        fade:Play()
+        task.delay(0.24, function()
+            if gui and gui.Parent then gui:Destroy() end
+        end)
+    end)
+end
+
+local function createStartupScreen()
+    local ok = pcall(function()
+        StartupGui = Instance.new("ScreenGui")
+        StartupGui.Name = "USSI_LoadingScreen"
+        StartupGui.IgnoreGuiInset = true
+        StartupGui.ResetOnSpawn = false
+        StartupGui.DisplayOrder = 1999999999
+        StartupGui.Parent = GUI_PARENT
+
+        StartupCard = Instance.new("Frame")
+        StartupCard.AnchorPoint = Vector2.new(0.5, 0.5)
+        StartupCard.Position = UDim2.fromScale(0.5, 0.54)
+        StartupCard.Size = UDim2.fromOffset(430, 154)
+        StartupCard.BackgroundColor3 = Color3.fromRGB(17, 20, 29)
+        StartupCard.BorderSizePixel = 0
+        StartupCard.Parent = StartupGui
+
+        local scale = Instance.new("UIScale")
+        scale.Scale = 0.94
+        scale.Parent = StartupCard
+        TweenService:Create(scale, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Scale = 1
+        }):Play()
+
+        local radius = Instance.new("UICorner")
+        radius.CornerRadius = UDim.new(0, 14)
+        radius.Parent = StartupCard
+
+        local outline = Instance.new("UIStroke")
+        outline.Color = Color3.fromRGB(62, 65, 91)
+        outline.Transparency = 0.12
+        outline.Parent = StartupCard
+
+        local accent = Instance.new("Frame")
+        accent.BackgroundColor3 = Color3.fromRGB(125, 108, 255)
+        accent.BorderSizePixel = 0
+        accent.Size = UDim2.new(1, 0, 0, 3)
+        accent.Parent = StartupCard
+
+        local badge = Instance.new("TextLabel")
+        badge.BackgroundColor3 = Color3.fromRGB(43, 39, 75)
+        badge.Position = UDim2.fromOffset(20, 20)
+        badge.Size = UDim2.fromOffset(44, 30)
+        badge.Font = Enum.Font.GothamBold
+        badge.Text = "USSI"
+        badge.TextColor3 = Color3.fromRGB(202, 195, 255)
+        badge.TextSize = 12
+        badge.Parent = StartupCard
+        local badgeCorner = Instance.new("UICorner")
+        badgeCorner.CornerRadius = UDim.new(0, 8)
+        badgeCorner.Parent = badge
+
+        local heading = Instance.new("TextLabel")
+        heading.BackgroundTransparency = 1
+        heading.Position = UDim2.fromOffset(76, 19)
+        heading.Size = UDim2.new(1, -96, 0, 15)
+        heading.Font = Enum.Font.GothamBold
+        heading.Text = "UNIVERSAL SYN SAVE INSTANCE"
+        heading.TextColor3 = Color3.fromRGB(147, 153, 174)
+        heading.TextSize = 9
+        heading.TextXAlignment = Enum.TextXAlignment.Left
+        heading.Parent = StartupCard
+
+        StartupTitle = Instance.new("TextLabel")
+        StartupTitle.BackgroundTransparency = 1
+        StartupTitle.Position = UDim2.fromOffset(76, 38)
+        StartupTitle.Size = UDim2.new(1, -96, 0, 24)
+        StartupTitle.Font = Enum.Font.GothamSemibold
+        StartupTitle.Text = "Starting USSI..."
+        StartupTitle.TextColor3 = Color3.fromRGB(245, 246, 252)
+        StartupTitle.TextSize = 16
+        StartupTitle.TextXAlignment = Enum.TextXAlignment.Left
+        StartupTitle.Parent = StartupCard
+
+        StartupDetail = Instance.new("TextLabel")
+        StartupDetail.BackgroundTransparency = 1
+        StartupDetail.Position = UDim2.fromOffset(20, 78)
+        StartupDetail.Size = UDim2.new(1, -40, 0, 18)
+        StartupDetail.Font = Enum.Font.Gotham
+        StartupDetail.Text = "Preparing interface and save engine..."
+        StartupDetail.TextColor3 = Color3.fromRGB(153, 160, 178)
+        StartupDetail.TextSize = 10
+        StartupDetail.TextXAlignment = Enum.TextXAlignment.Left
+        StartupDetail.TextTruncate = Enum.TextTruncate.AtEnd
+        StartupDetail.Parent = StartupCard
+
+        local track = Instance.new("Frame")
+        track.Position = UDim2.fromOffset(20, 111)
+        track.Size = UDim2.new(1, -40, 0, 5)
+        track.BackgroundColor3 = Color3.fromRGB(42, 46, 61)
+        track.BorderSizePixel = 0
+        track.ClipsDescendants = true
+        track.Parent = StartupCard
+        local trackCorner = Instance.new("UICorner")
+        trackCorner.CornerRadius = UDim.new(1, 0)
+        trackCorner.Parent = track
+
+        StartupFill = Instance.new("Frame")
+        StartupFill.Size = UDim2.new(0.12, 0, 1, 0)
+        StartupFill.BackgroundColor3 = Color3.fromRGB(125, 108, 255)
+        StartupFill.BorderSizePixel = 0
+        StartupFill.Parent = track
+        local fillCorner = Instance.new("UICorner")
+        fillCorner.CornerRadius = UDim.new(1, 0)
+        fillCorner.Parent = StartupFill
+
+        local footer = Instance.new("TextLabel")
+        footer.BackgroundTransparency = 1
+        footer.Position = UDim2.fromOffset(20, 123)
+        footer.Size = UDim2.new(1, -40, 0, 16)
+        footer.Font = Enum.Font.GothamMedium
+        footer.Text = GUI_VERSION .. "  •  LOADING"
+        footer.TextColor3 = Color3.fromRGB(102, 111, 132)
+        footer.TextSize = 8
+        footer.TextXAlignment = Enum.TextXAlignment.Left
+        footer.Parent = StartupCard
+    end)
+
+    if not ok then
+        if StartupGui then StartupGui:Destroy() end
+        StartupGui = nil
+        return
+    end
+end
+
+local function updateStartupProgress(progress)
+    if not StartupFill then return end
+    local amount = math.clamp(progress, 0, 1)
+    TweenService:Create(
+        StartupFill,
+        TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { Size = UDim2.new(amount, 0, 1, 0) }
+    ):Play()
+end
+
+createStartupScreen()
+setStartupStatus = setStartupStatus
+
+local function setStartupStatus(title, detail, progress)
+    if not StartupGui then return end
+    StartupTitle.Text = title
+    StartupDetail.Text = detail
+    updateStartupProgress(progress)
+end
+
 local function loadEngine()
-    local source = game:HttpGet(REPO .. "saveinstance.luau", true)
+    setStartupStatus("Downloading save engine", "Fetching saveinstance.luau from GitHub...", 0.22)
+    local source = game:HttpGet(REPO .. "saveinstance.luau?v=" .. GUI_VERSION, true)
+    assert(type(source) == "string" and #source > 1000, "GitHub returned an empty or incomplete save engine.")
+
+    setStartupStatus("Compiling save engine", string.format("Downloaded %.1f KB • compiling serializer...", #source / 1024), 0.58)
     local chunk, err = loadstring(source, "USSI")
     assert(chunk, err)
-    return chunk()
+
+    setStartupStatus("Initializing engine", "Preparing serializer and compatibility checks...", 0.82)
+    local engine = chunk()
+    assert(type(engine) == "function", "Save engine did not return a function.")
+    setStartupStatus("Building interface", "Engine ready • creating the USSI workspace...", 0.94)
+    return engine
 end
 
 local ok, synsaveinstance = pcall(loadEngine)
 if not ok then
     warn("[USSI GUI] Could not load save engine: " .. tostring(synsaveinstance))
+    setStartupStatus("Could not start USSI", string.sub(tostring(synsaveinstance), 1, 95), 1)
+    task.delay(5, destroyStartupScreen)
     return
 end
 
@@ -679,12 +862,51 @@ end)
 local runCard = makeCard(savePage, "Ready to save?", "Check your settings before starting. Large experiences can take a while and may use substantial memory.")
 local runButton = button(runCard, "Start save", 42, true)
 local runStatus = label(runCard, "Waiting for configuration.", 11, Theme.Muted)
+local runProgressTrack = create("Frame", {
+    BackgroundColor3 = Theme.Surface2,
+    BorderSizePixel = 0,
+    Size = UDim2.new(1, 0, 0, 5),
+}, runCard)
+corner(runProgressTrack, 5)
+local runProgressFill = create("Frame", {
+    BackgroundColor3 = Theme.Accent,
+    BorderSizePixel = 0,
+    Size = UDim2.new(0, 0, 1, 0),
+}, runProgressTrack)
+corner(runProgressFill, 5)
+local runProgressTween
+local runProgressMode
 
-local function setStatus(message, color)
+local function setStatus(message, color, progress)
     statusLabel.Text = "●  " .. message
     statusLabel.TextColor3 = color or Theme.Green
     runStatus.Text = message
     runStatus.TextColor3 = color or Theme.Muted
+
+    if progress == nil then
+        if runProgressMode ~= "indeterminate" then
+            if runProgressTween then pcall(function() runProgressTween:Cancel() end) end
+            runProgressFill.Position = UDim2.new(-0.25, 0, 0, 0)
+            runProgressFill.Size = UDim2.new(0.25, 0, 1, 0)
+            runProgressMode = "indeterminate"
+            runProgressTween = TweenService:Create(
+                runProgressFill,
+                TweenInfo.new(1.1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, false),
+                { Position = UDim2.new(1, 0, 0, 0) }
+            )
+            runProgressTween:Play()
+        end
+    else
+        if runProgressTween then
+            pcall(function() runProgressTween:Cancel() end)
+            runProgressTween = nil
+        end
+        runProgressMode = "determinate"
+        runProgressFill.Position = UDim2.new(0, 0, 0, 0)
+        tween(runProgressFill, 0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, {
+            Size = UDim2.new(math.clamp(progress, 0, 1), 0, 1, 0)
+        })
+    end
 end
 
 -- Resolve a user-entered Instance path without executing arbitrary Lua code.
@@ -1156,11 +1378,11 @@ runButton.MouseButton1Click:Connect(function()
     runButton:SetAttribute("Running", true)
     runButton.Text = "Saving..."
     runButton.BackgroundColor3 = Theme.Border
-    setStatus("Save started. Check the USSI status display and F9 console.", Theme.Accent)
+    setStatus("Save started. Detailed progress is shown in the USSI progress panel.", Theme.Accent, nil)
     task.spawn(function()
         local success, err = pcall(synsaveinstance, options)
         if success then
-            setStatus("Save routine finished. Check the output file.", Theme.Green)
+            setStatus("Save routine finished. Check the output file.", Theme.Green, 1)
         else
             setStatus("Save failed: " .. tostring(err), Theme.Red)
             warn("[USSI GUI] Save failed: " .. tostring(err))
@@ -1259,5 +1481,7 @@ end)
 
 -- Default to Overview.
 switchPage("Overview")
+setStartupStatus("USSI ready", "GUI and save engine loaded successfully.", 1)
+task.delay(0.12, destroyStartupScreen)
 
 print("[USSI GUI] " .. GUI_VERSION .. " loaded. UniversalSynSaveInstance https://discord.gg/wx4ThpAsmw")
