@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.8.1"
+local GUI_VERSION = "v1.9.0"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -589,8 +589,13 @@ label(info, "Place: " .. game.Name, 12, Theme.Text)
 label(info, "Place ID: " .. tostring(game.PlaceId), 11, Theme.Muted)
 label(info, "Job ID: " .. (game.JobId ~= "" and game.JobId or "Studio / local session"), 10, Theme.Muted)
 
-local outputCard = makeCard(savePage, "OUTPUT", "Choose the file type, save mode, compression, and destination.")
-local format = makeDropdown(outputCard, "Output format", {"Binary (.rbxl / .rbxm)", "XML (.rbxlx / .rbxmx)"}, "Binary (.rbxl / .rbxm)")
+local outputCard = makeCard(savePage, "OUTPUT", "Choose the exact Roblox file type, save mode, compression, and destination.")
+local format = makeDropdown(outputCard, "File type", {
+    "RBXL - Place (Binary)",
+    "RBXM - Model (Binary)",
+    "RBXLX - Place (XML)",
+    "RBXMX - Model (XML)",
+}, "RBXL - Place (Binary)")
 local mode = makeDropdown(outputCard, "Save mode", {"optimized", "full", "scripts"}, "optimized")
 local compression = makeDropdown(outputCard, "Compression", {"zstd", "lz4", "None"}, "zstd")
 local pathBox = makeInput(outputCard, "File path", "workspace/PlaceName", "")
@@ -1088,7 +1093,15 @@ runButton.MouseButton1Click:Connect(function()
         end
     end
 
-    local isBinary = format() == "Binary (.rbxl / .rbxm)"
+    local selectedFormat = format()
+    local isBinary = selectedFormat == "RBXL - Place (Binary)" or selectedFormat == "RBXM - Model (Binary)"
+    local isModel = selectedFormat == "RBXM - Model (Binary)" or selectedFormat == "RBXMX - Model (XML)"
+
+    if targetObject and not isModel then
+        setStatus("A specific Instance must be saved as RBXM or RBXMX. Change the file type to a Model format.", Theme.Red)
+        return
+    end
+
     local compressionMode = compression()
     if compressionMode == "None" then compressionMode = false end
     local options = {
@@ -1098,7 +1111,7 @@ runButton.MouseButton1Click:Connect(function()
         CompressionLevel = compressionLevel,
         FilePath = pathBox.Text ~= "" and pathBox.Text or false,
         Object = targetObject or false,
-        IsModel = targetObject ~= nil,
+        IsModel = isModel,
         SafeMode = safeMode(),
         ShowStatus = showStatus(),
         ReadMe = readme(),
