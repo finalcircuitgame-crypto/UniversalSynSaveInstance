@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.9.0"
+local GUI_VERSION = "v1.9.1"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -600,7 +600,7 @@ local mode = makeDropdown(outputCard, "Save mode", {"optimized", "full", "script
 local compression = makeDropdown(outputCard, "Compression", {"zstd", "lz4", "None"}, "zstd")
 local pathBox = makeInput(outputCard, "File path", "workspace/PlaceName", "")
 
-local objectCard = makeCard(savePage, "SPECIFIC INSTANCE (OPTIONAL)", "Save one selected Instance instead of the whole place. Leave blank for a normal place save.")
+local objectCard = makeCard(savePage, "SPECIFIC INSTANCE (OPTIONAL)", "Save one selected Instance instead of the whole game. RBXL/RBXLX creates a place file containing the selected hierarchy; RBXM/RBXMX creates a model file.")
 local objectPathBox = makeInput(objectCard, "Instance path", 'game:GetService("ReplicatedStorage").Assets.CutScenes.NIGHT1TESTING', "")
 local objectHint = label(objectCard, "Supports game:GetService(\"ServiceName\").Folder.Model paths and simple dot paths like ReplicatedStorage.Assets.CutScenes.NIGHT1TESTING.", 10, Theme.Muted)
 objectHint.TextWrapped = true
@@ -1096,11 +1096,6 @@ runButton.MouseButton1Click:Connect(function()
     local selectedFormat = format()
     local isBinary = selectedFormat == "RBXL - Place (Binary)" or selectedFormat == "RBXM - Model (Binary)"
     local isModel = selectedFormat == "RBXM - Model (Binary)" or selectedFormat == "RBXMX - Model (XML)"
-
-    if targetObject and not isModel then
-        setStatus("A specific Instance must be saved as RBXM or RBXMX. Change the file type to a Model format.", Theme.Red)
-        return
-    end
 
     local compressionMode = compression()
     if compressionMode == "None" then compressionMode = false end
