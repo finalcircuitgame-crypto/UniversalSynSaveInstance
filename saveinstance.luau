@@ -7219,6 +7219,14 @@ local function synsaveinstance(...)
 				end
 				task.wait(Log10 + ExtraTime)
 			end
+			if LoadingThread then
+				task.cancel(LoadingThread)
+				LoadingThread = nil
+			end
+			if StatusProgressTween then
+				pcall(function() StatusProgressTween:Cancel() end)
+				StatusProgressTween = nil
+			end
 			if StatusGui then
 				StatusGui:Destroy()
 				if USSI.StatusGui == StatusGui then
