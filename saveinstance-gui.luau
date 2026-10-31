@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.5.0"
+local GUI_VERSION = "v1.6.0"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -624,6 +624,24 @@ local isolatePlayer = makeToggle(behaviorCard, "Isolate local player", "Save the
 local isolateStarter = makeToggle(behaviorCard, "Isolate StarterPlayer", "Move StarterPlayer children into a top-level folder.", false)
 local shutdown = makeToggle(behaviorCard, "Shutdown when done", "Close the game after a successful save.", false)
 
+local performanceCard = makeCard(advancedPage, "PERFORMANCE & SCRIPT CONTROL", "Additional engine controls. Safe Mode automatically enables the first two unless you explicitly override them.")
+local killAllScripts = makeToggle(performanceCard, "Stop other running scripts", "Disables other running scripts during capture. Some experiences may stop responding to input.", false)
+local boostFPS = makeToggle(performanceCard, "Boost FPS while saving", "Temporarily disables 3D rendering during the save, then restores it.", false)
+
+local playerCard = makeCard(advancedPage, "PLAYER & INSTANCE OUTPUT", "Change how player-related instances are represented in the saved file.")
+local isolatePlayers = makeToggle(playerCard, "Isolate all players", "Place Player objects in a top-level Players folder instead of the Players service.", false)
+local isolateCharacter = makeToggle(playerCard, "Isolate local character", "Save your character as a standalone Model named LocalPlayer Character.", false)
+local ignoreDefaultScripts = makeToggle(playerCard, "Ignore default player scripts", "Skip Roblox default scripts such as PlayerModule and BubbleChat. Can reduce decompiler issues.", false)
+
+local fileCard = makeCard(advancedPage, "FILE WRITING & SIZE", "Options that affect file output, storage, and compatibility.")
+local alternativeWrite = makeToggle(fileCard, "Write file in chunks", "Use appendfile in smaller pieces where supported, with engine fallback behavior.", true)
+local sharedBinary = makeToggle(fileCard, "Share repeated binary data", "Store identical meshes and images once. Can reduce file size when assets repeat.", false)
+local unionsAsParts = makeToggle(fileCard, "Convert unions to Parts", "Risky: keeps visible geometry on limited executors, but loses the merged union shape.", false)
+
+local scriptPropertyCard = makeCard(advancedPage, "SCRIPT MODE & PRIVACY", "Extra filtering and identity replacement options.")
+local scriptOnlyProperties = makeToggle(scriptPropertyCard, "Skip non-script properties in Scripts mode", "Only serialize properties for script objects when using Scripts mode.", false)
+local anonymize = makeToggle(scriptPropertyCard, "Anonymize local player", "Replace the local player's name and UserId in the output. Matching text or numbers elsewhere may also change.", false)
+
 local about = makeCard(aboutPage, "About this interface", "A standalone executor interface for the existing Universal Syn Save Instance project.")
 label(about, "Engine: saveinstance.luau", 12, Theme.Text)
 label(about, "UI: saveinstance-gui.luau  •  " .. GUI_VERSION, 12, Theme.Text)
@@ -680,6 +698,19 @@ runButton.MouseButton1Click:Connect(function()
         IsolateStarterPlayer = isolateStarter(),
         ShutdownWhenDone = shutdown(),
         SaveCacheInterval = cacheInterval,
+
+        -- Additional supported engine options.
+        -- Leave these nil unless enabled so SafeMode can apply its own defaults.
+        KillAllScripts = killAllScripts() and true or nil,
+        BoostFPS = boostFPS() and true or nil,
+        IsolatePlayers = isolatePlayers(),
+        IsolateLocalPlayerCharacter = isolateCharacter(),
+        IgnoreDefaultPlayerScripts = ignoreDefaultScripts(),
+        AlternativeWritefile = alternativeWrite(),
+        SharedBinaryStrings = sharedBinary(),
+        TreatUnionsAsParts = unionsAsParts(),
+        IgnorePropertiesOfNotScriptsOnScriptsMode = scriptOnlyProperties(),
+        Anonymous = anonymize(),
     }
     runButton:SetAttribute("Running", true)
     runButton.Text = "Saving..."
