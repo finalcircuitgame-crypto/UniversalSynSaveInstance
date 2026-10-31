@@ -16,6 +16,22 @@ local Options = {} -- Documentation here https://luau.github.io/UniversalSynSave
 synsaveinstance(Options)
 ```
 
+# Executor GUI Loader (this fork)
+
+This fork includes a standalone executor GUI. Run this loader to fetch the newest GUI source from this repository:
+
+```lua
+loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/loader.luau?cache=" .. tostring(os.time())
+))()
+```
+
+The loader adds a cache-busting query, checks the downloaded GUI version, falls back to a known-good version if the main branch cannot be fetched, and reports download/compile/execution errors.
+
+## Custom output names
+
+In the GUI's **Save** tab, use **Custom output name** to name the exported file. For example, entering `Night 1 Cutscene` with **RBXL - Place (Binary)** selected saves as `Night 1 Cutscene.rbxl`. Leave the field empty to use the automatic name. The selected format supplies the extension.
+
 # Universal Syn Save Instance
 
 Or shortly USSI, a project aimed at resurrecting saveinstance function from Synapse X.<br />
