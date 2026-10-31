@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.9.1"
+local GUI_VERSION = "v1.10.0"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -598,7 +598,19 @@ local format = makeDropdown(outputCard, "File type", {
 }, "RBXL - Place (Binary)")
 local mode = makeDropdown(outputCard, "Save mode", {"optimized", "full", "scripts"}, "optimized")
 local compression = makeDropdown(outputCard, "Compression", {"zstd", "lz4", "None"}, "zstd")
-local pathBox = makeInput(outputCard, "File path", "workspace/PlaceName", "")
+local outputNameBox = makeInput(
+    outputCard,
+    "Custom output name",
+    "My Experience Backup",
+    getSavedSetting("File path", "", "string")
+)
+local outputNameHint = label(
+    outputCard,
+    "Leave blank to use the game's automatic name. The selected format adds .rbxl, .rbxm, .rbxlx, or .rbxmx automatically. Example: Final Circuit - Night 1",
+    10,
+    Theme.Muted
+)
+outputNameHint.TextWrapped = true
 
 local objectCard = makeCard(savePage, "SPECIFIC INSTANCE (OPTIONAL)", "Save one selected Instance instead of the whole game. RBXL/RBXLX creates a place file containing the selected hierarchy; RBXM/RBXMX creates a model file.")
 local objectPathBox = makeInput(objectCard, "Instance path", 'game:GetService("ReplicatedStorage").Assets.CutScenes.NIGHT1TESTING', "")
@@ -1104,7 +1116,7 @@ runButton.MouseButton1Click:Connect(function()
         Binary = isBinary,
         CompressionMode = compressionMode,
         CompressionLevel = compressionLevel,
-        FilePath = pathBox.Text ~= "" and pathBox.Text or false,
+        FilePath = outputNameBox.Text:match("^%s*(.-)%s*$") ~= "" and outputNameBox.Text:match("^%s*(.-)%s*$") or false,
         Object = targetObject or false,
         IsModel = isModel,
         SafeMode = safeMode(),
