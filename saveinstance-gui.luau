@@ -595,7 +595,10 @@ local function makeDropdown(parent, title, values, default, onChanged)
         drop.Text = selected .. "   ▾"
         if ReducedMotion then
             wrap.Size = UDim2.new(1, 0, 0, 57)
-            if menu then menu:Destroy() menu = nil end
+            if menu then
+                menu:Destroy()
+                menu = nil
+            end
             return
         end
         local targetHeight = 57
@@ -1133,10 +1136,10 @@ local writeChunkBox = makeInput(optimizationCard, "Write chunk size (MB, 1-16)",
 local explorerPerformanceCard = makeCard(optimizationPage, "EXPLORER PERFORMANCE", "Tune how much the instance browser searches and how it displays results.")
 local explorerResultLimit = makeDropdown(explorerPerformanceCard, "Maximum search results", {
     "50", "100", "250", "500"
-}, getSavedSetting("Explorer max results", "100", "string"))
+}, getSavedSetting("Maximum search results", "100", "string"))
 local explorerYieldInterval = makeDropdown(explorerPerformanceCard, "Search yield interval", {
     "500", "1000", "2500", "5000"
-}, getSavedSetting("Explorer yield interval", "2500", "string"))
+}, getSavedSetting("Search yield interval", "2500", "string"))
 local explorerSort = makeToggle(explorerPerformanceCard, "Sort Explorer alphabetically", "Alphabetical sorting is easier to scan; disabling it can speed up large tree expansions.", true)
 
 -- MISC: five window and workflow quality-of-life controls.
