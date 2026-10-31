@@ -21,12 +21,15 @@ synsaveinstance(Options)
 This fork includes a standalone executor GUI. Run this loader to fetch the newest GUI source from this repository:
 
 ```lua
+local HttpService = game:GetService("HttpService")
+local cacheBust = HttpService:GenerateGUID(false)
+
 loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/loader.luau?cache=" .. tostring(os.time())
+    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/loader.luau?_ussi_nocache=" .. cacheBust
 ))()
 ```
 
-The loader adds a cache-busting query, checks the downloaded GUI version, falls back to a known-good version if the main branch cannot be fetched, and reports download/compile/execution errors.
+The loader sends no-cache headers when the executor exposes request/http_request, adds a fresh GUID query to every request, checks the downloaded GUI version, falls back to a commit-pinned copy if the main branch cannot be fetched, and reports download/compile/execution errors. The bootstrap example also uses a fresh GUID so the loader script itself is not reused from a URL cache.
 
 ## Custom output names
 
