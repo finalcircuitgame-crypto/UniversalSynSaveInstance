@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.4.0"
+local GUI_VERSION = "v1.5.0"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -20,6 +20,62 @@ local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
+
+-- Persist GUI settings between executions using the executor's file API.
+local CONFIG_FILE = "USSI_Settings.json"
+local SavedSettings = {}
+
+local function loadSavedSettings()
+    if type(readfile) ~= "function" then
+        warn("[USSI GUI] readfile is unavailable; settings will not persist.")
+        return
+    end
+
+    local ok, contents = pcall(readfile, CONFIG_FILE)
+    if not ok or type(contents) ~= "string" or contents == "" then return end
+
+    local decoded, data = pcall(function()
+        return HttpService:JSONDecode(contents)
+    end)
+    if decoded and type(data) == "table" then
+        SavedSettings = data
+    else
+        warn("[USSI GUI] Settings file was invalid; using defaults.")
+    end
+end
+
+local function saveSavedSettings()
+    if type(writefile) ~= "function" then return end
+
+    local ok, encoded = pcall(function()
+        return HttpService:JSONEncode(SavedSettings)
+    end)
+    if not ok then
+        warn("[USSI GUI] Could not encode settings: " .. tostring(encoded))
+        return
+    end
+
+    local written, err = pcall(writefile, CONFIG_FILE, encoded)
+    if not written then
+        warn("[USSI GUI] Could not save settings: " .. tostring(err))
+    end
+end
+
+local function getSavedSetting(key, fallback, expectedType)
+    local value = SavedSettings[key]
+    if type(value) == (expectedType or type(fallback)) then
+        return value
+    end
+    return fallback
+end
+
+local function setSavedSetting(key, value)
+    SavedSettings[key] = value
+    saveSavedSettings()
+end
+
+loadSavedSettings()
+
 local Existing = nil
 local GUI_PARENT = CoreGui
 
@@ -184,7 +240,7 @@ local function makeInput(parent, title, placeholder, initial)
         Position = UDim2.fromOffset(0, 23),
         Size = UDim2.new(1, 0, 0, 32),
         ClearTextOnFocus = false,
-        Text = initial or "",
+        Text = getSavedSetting(title, initial or "", "string"),
         PlaceholderText = placeholder or "",
         PlaceholderColor3 = Theme.Muted,
         TextColor3 = Theme.Text,
@@ -201,6 +257,7 @@ local function makeInput(parent, title, placeholder, initial)
     box.FocusLost:Connect(function()
         tween(boxStroke, 0.16, nil, nil, { Color = Theme.Border, Transparency = 0 })
         tween(box, 0.16, nil, nil, { BackgroundColor3 = Theme.Surface2 })
+        setSavedSetting(title, box.Text)
     end)
     create("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, box)
     return box
@@ -235,7 +292,7 @@ local function makeToggle(parent, title, description, default)
         Position = default and UDim2.fromOffset(21, 3) or UDim2.fromOffset(3, 3),
     }, toggle)
     corner(knob, 20)
-    local value = default == true
+    local value = getSavedSetting(title, default == true, "boolean")
     local function render()
         TweenService:Create(toggle, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
             BackgroundColor3 = value and Theme.Accent or Theme.Border
@@ -244,9 +301,11 @@ local function makeToggle(parent, title, description, default)
             Position = value and UDim2.fromOffset(21, 3) or UDim2.fromOffset(3, 3)
         }):Play()
     end
+    render()
     toggle.MouseButton1Click:Connect(function()
         value = not value
         render()
+        setSavedSetting(title, value)
     end)
     return function() return value end
 end
@@ -258,7 +317,8 @@ local function makeDropdown(parent, title, values, default)
         ClipsDescendants = false,
     }, parent)
     label(wrap, title, 12, Theme.Muted)
-    local selected = default or values[1]
+    local savedSelection = getSavedSetting(title, default or values[1], "string")
+    local selected = table.find(values, savedSelection) and savedSelection or (default or values[1])
     local drop = button(wrap, selected .. "   ▾", 32, false)
     drop.Position = UDim2.fromOffset(0, 23)
     drop.TextXAlignment = Enum.TextXAlignment.Left
@@ -347,6 +407,7 @@ local function makeDropdown(parent, title, values, default)
             choice.MouseButton1Click:Connect(function()
                 selected = item
                 drop.Text = selected .. "   ▾"
+                setSavedSetting(title, selected)
                 closeMenu()
             end)
         end
