@@ -593,6 +593,11 @@ local function makeDropdown(parent, title, values, default, onChanged)
         if not opened then return end
         opened = false
         drop.Text = selected .. "   ▾"
+        if ReducedMotion then
+            wrap.Size = UDim2.new(1, 0, 0, 57)
+            if menu then menu:Destroy() menu = nil end
+            return
+        end
         local targetHeight = 57
         TweenService:Create(wrap, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
             Size = UDim2.new(1, 0, 0, targetHeight)
@@ -648,16 +653,21 @@ local function makeDropdown(parent, title, values, default, onChanged)
                 ZIndex = 31,
             }, menu)
             create("UIPadding", { PaddingLeft = UDim.new(0, 11) }, choice)
-            choice.TextTransparency = 1
-            choice.Position = UDim2.fromOffset(5, 0)
-            task.delay((index - 1) * 0.025, function()
-                if choice.Parent then
-                    tween(choice, 0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, {
-                        TextTransparency = 0,
-                        Position = UDim2.fromOffset(0, 0)
-                    })
-                end
-            end)
+            if ReducedMotion then
+                choice.TextTransparency = 0
+                choice.Position = UDim2.fromOffset(0, 0)
+            else
+                choice.TextTransparency = 1
+                choice.Position = UDim2.fromOffset(5, 0)
+                task.delay((index - 1) * 0.025, function()
+                    if choice.Parent then
+                        tween(choice, 0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, {
+                            TextTransparency = 0,
+                            Position = UDim2.fromOffset(0, 0)
+                        })
+                    end
+                end)
+            end
             choice.MouseEnter:Connect(function()
                 tween(choice, 0.1, nil, nil, { BackgroundTransparency = 0.15, TextColor3 = Theme.AccentHover })
             end)
@@ -676,13 +686,19 @@ local function makeDropdown(parent, title, values, default, onChanged)
             end)
         end
 
-        TweenService:Create(wrap, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = UDim2.new(1, 0, 0, 61 + menuHeight)
-        }):Play()
-        TweenService:Create(menu, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Size = UDim2.new(1, 0, 0, menuHeight),
-            BackgroundTransparency = 0
-        }):Play()
+        if ReducedMotion then
+            wrap.Size = UDim2.new(1, 0, 0, 61 + menuHeight)
+            menu.Size = UDim2.new(1, 0, 0, menuHeight)
+            menu.BackgroundTransparency = 0
+        else
+            TweenService:Create(wrap, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Size = UDim2.new(1, 0, 0, 61 + menuHeight)
+            }):Play()
+            TweenService:Create(menu, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.new(1, 0, 0, menuHeight),
+                BackgroundTransparency = 0
+            }):Play()
+        end
     end
 
     drop.MouseButton1Click:Connect(openMenu)
@@ -1123,7 +1139,6 @@ local explorerYieldInterval = makeDropdown(explorerPerformanceCard, "Search yiel
 }, getSavedSetting("Explorer yield interval", "2500", "string"))
 local explorerSort = makeToggle(explorerPerformanceCard, "Sort Explorer alphabetically", "Alphabetical sorting is easier to scan; disabling it can speed up large tree expansions.", true)
 
-themeDropdown.SetValues({ "Midnight Violet", "Ocean Blue", "Emerald", "Rose", "Amber" }, CurrentThemeName)
 -- MISC: five window and workflow quality-of-life controls.
 local windowCard = makeCard(miscPage, "WINDOW BEHAVIOR", "Control how the interface opens, hides, and remembers its layout.")
 local hotkeyInfo = label(windowCard, "Toggle visibility: Left Ctrl + Left Shift + U", 11, Theme.Muted)
