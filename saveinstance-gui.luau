@@ -414,7 +414,8 @@ runButton.MouseButton1Click:Connect(function()
     local compressionLevel = math.clamp(tonumber(compressionLevelBox.Text) or 9, -7, 22)
     local cacheInterval = math.max(1, tonumber(saveCacheBox.Text) or 56320)
     local isBinary = format() == "Binary (.rbxl / .rbxm)"
-    local compressionMode = compression()\n    if compressionMode == "None" then compressionMode = false end
+    local compressionMode = compression()
+    if compressionMode == "None" then compressionMode = false end
     local options = {
         mode = mode(),
         Binary = isBinary,
