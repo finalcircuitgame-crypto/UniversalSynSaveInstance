@@ -3721,7 +3721,75 @@ local function synsaveinstance(...)
 
 	local totalsize = 0
 
+	local StatusGui
 	local StatusText
+	local StatusDetail
+	local StatusPhaseText
+	local StatusProgressTrack
+	local StatusProgressFill
+	local StatusProgressTween
+	local StatusProgressMode
+	local StatusTweenService = game:GetService("TweenService")
+
+	local function setStatusDisplay(title, detail, progress, phase)
+		if not StatusText then
+			return
+		end
+
+		if title ~= nil then
+			StatusText.Text = title
+		end
+		if detail ~= nil and StatusDetail then
+			StatusDetail.Text = detail
+		end
+		if phase ~= nil and StatusPhaseText then
+			StatusPhaseText.Text = phase
+		end
+
+		if StatusProgressFill then
+			if progress == nil then
+				if StatusProgressMode ~= "indeterminate" then
+					if StatusProgressTween then
+						pcall(function() StatusProgressTween:Cancel() end)
+					end
+					StatusProgressFill.Position = UDim2.new(-0.24, 0, 0, 0)
+					StatusProgressFill.Size = UDim2.new(0.24, 0, 1, 0)
+					StatusProgressMode = "indeterminate"
+					local ok, tween = pcall(function()
+						return StatusTweenService:Create(
+							StatusProgressFill,
+							TweenInfo.new(1.15, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, false),
+							{ Position = UDim2.new(1, 0, 0, 0) }
+						)
+					end)
+					if ok and tween then
+						StatusProgressTween = tween
+						tween:Play()
+					end
+				end
+			else
+				if StatusProgressTween then
+					pcall(function() StatusProgressTween:Cancel() end)
+					StatusProgressTween = nil
+				end
+				StatusProgressMode = "determinate"
+				StatusProgressFill.Position = UDim2.new(0, 0, 0, 0)
+				local amount = math.clamp(progress, 0, 1)
+				local ok, tween = pcall(function()
+					return StatusTweenService:Create(
+						StatusProgressFill,
+						TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+						{ Size = UDim2.new(amount, 0, 1, 0) }
+					)
+				end)
+				if ok and tween then
+					tween:Play()
+				else
+					StatusProgressFill.Size = UDim2.new(amount, 0, 1, 0)
+				end
+			end
+		end
+	end
 
 	local OPTIONS = {
 		mode = "optimized",
@@ -4506,11 +4574,14 @@ local function synsaveinstance(...)
 
 	local function run_with_loading(text, keepStatus, waitForRender, taskFunction, ...)
 		local previousStatus
+		local previousDetail
 		if StatusText then
 			if keepStatus then
 				previousStatus = StatusText.Text
+				previousDetail = StatusDetail and StatusDetail.Text
 			end
 			LoadingText = text
+			setStatusDisplay(text, "This step may take a moment.", nil, "WORKING")
 			IsLoading = true
 			ensureSpinner()
 			if waitForRender then
@@ -4523,11 +4594,204 @@ local function synsaveinstance(...)
 		if StatusText then
 			IsLoading = false
 			if previousStatus then
-				StatusText.Text = previousStatus
+				setStatusDisplay(previousStatus, previousDetail, nil, "IN PROGRESS")
 			end
 		end
 		return unpack(result)
 	end
+
+	local function createStatusGui()
+		if not OPTIONS.ShowStatus then
+			return
+		end
+
+		local ok, err = pcall(function()
+			if USSI.StatusGui then
+				USSI.StatusGui:Destroy()
+			end
+
+			StatusGui = Instance.new("ScreenGui")
+			StatusGui.Name = "USSI_SaveProgress"
+			StatusGui.DisplayOrder = 2000000000
+			StatusGui.ResetOnSpawn = false
+			StatusGui.IgnoreGuiInset = true
+			pcall(function()
+				StatusGui.OnTopOfCoreBlur = true
+			end)
+
+			local card = Instance.new("Frame")
+			card.Name = "ProgressCard"
+			card.AnchorPoint = Vector2.new(1, 0)
+			card.Position = UDim2.new(1, 380, 0, 22)
+			card.Size = UDim2.fromOffset(360, 118)
+			card.BackgroundColor3 = Color3.fromRGB(17, 20, 29)
+			card.BorderSizePixel = 0
+			card.Parent = StatusGui
+
+			local cardCorner = Instance.new("UICorner")
+			cardCorner.CornerRadius = UDim.new(0, 12)
+			cardCorner.Parent = card
+
+			local cardStroke = Instance.new("UIStroke")
+			cardStroke.Color = Color3.fromRGB(58, 62, 87)
+			cardStroke.Transparency = 0.15
+			cardStroke.Thickness = 1
+			cardStroke.Parent = card
+
+			local accent = Instance.new("Frame")
+			accent.Name = "Accent"
+			accent.BackgroundColor3 = Color3.fromRGB(125, 108, 255)
+			accent.BorderSizePixel = 0
+			accent.Size = UDim2.new(1, 0, 0, 3)
+			accent.Parent = card
+			local accentCorner = Instance.new("UICorner")
+			accentCorner.CornerRadius = UDim.new(0, 12)
+			accentCorner.Parent = accent
+
+			local header = Instance.new("TextLabel")
+			header.BackgroundTransparency = 1
+			header.Position = UDim2.fromOffset(16, 10)
+			header.Size = UDim2.new(1, -32, 0, 15)
+			header.Font = Enum.Font.GothamBold
+			header.Text = "UNIVERSAL SYN SAVE INSTANCE"
+			header.TextColor3 = Color3.fromRGB(151, 155, 179)
+			header.TextSize = 9
+			header.TextXAlignment = Enum.TextXAlignment.Left
+			header.Parent = card
+
+			StatusPhaseText = Instance.new("TextLabel")
+			StatusPhaseText.Name = "Phase"
+			StatusPhaseText.BackgroundColor3 = Color3.fromRGB(40, 38, 66)
+			StatusPhaseText.Position = UDim2.new(1, -94, 0, 8)
+			StatusPhaseText.Size = UDim2.fromOffset(78, 18)
+			StatusPhaseText.Font = Enum.Font.GothamBold
+			StatusPhaseText.Text = "STARTING"
+			StatusPhaseText.TextColor3 = Color3.fromRGB(181, 171, 255)
+			StatusPhaseText.TextSize = 8
+			StatusPhaseText.Parent = card
+			local phaseCorner = Instance.new("UICorner")
+			phaseCorner.CornerRadius = UDim.new(0, 6)
+			phaseCorner.Parent = StatusPhaseText
+
+			StatusText = Instance.new("TextLabel")
+			StatusText.Name = "Status"
+			StatusText.BackgroundTransparency = 1
+			StatusText.Position = UDim2.fromOffset(16, 34)
+			StatusText.Size = UDim2.new(1, -32, 0, 23)
+			StatusText.Font = Enum.Font.GothamSemibold
+			StatusText.Text = "Preparing save..."
+			StatusText.TextColor3 = Color3.fromRGB(245, 246, 252)
+			StatusText.TextSize = 15
+			StatusText.TextXAlignment = Enum.TextXAlignment.Left
+			StatusText.TextTruncate = Enum.TextTruncate.AtEnd
+			StatusText.Parent = card
+
+			StatusDetail = Instance.new("TextLabel")
+			StatusDetail.Name = "Details"
+			StatusDetail.BackgroundTransparency = 1
+			StatusDetail.Position = UDim2.fromOffset(16, 59)
+			StatusDetail.Size = UDim2.new(1, -32, 0, 17)
+			StatusDetail.Font = Enum.Font.Gotham
+			StatusDetail.Text = "Initializing serializer..."
+			StatusDetail.TextColor3 = Color3.fromRGB(157, 164, 181)
+			StatusDetail.TextSize = 10
+			StatusDetail.TextXAlignment = Enum.TextXAlignment.Left
+			StatusDetail.TextTruncate = Enum.TextTruncate.AtEnd
+			StatusDetail.Parent = card
+
+			StatusProgressTrack = Instance.new("Frame")
+			StatusProgressTrack.Name = "ProgressTrack"
+			StatusProgressTrack.Position = UDim2.fromOffset(16, 84)
+			StatusProgressTrack.Size = UDim2.new(1, -32, 0, 5)
+			StatusProgressTrack.BackgroundColor3 = Color3.fromRGB(42, 46, 61)
+			StatusProgressTrack.BorderSizePixel = 0
+			StatusProgressTrack.ClipsDescendants = true
+			StatusProgressTrack.Parent = card
+			local trackCorner = Instance.new("UICorner")
+			trackCorner.CornerRadius = UDim.new(1, 0)
+			trackCorner.Parent = StatusProgressTrack
+
+			StatusProgressFill = Instance.new("Frame")
+			StatusProgressFill.Name = "Progress"
+			StatusProgressFill.Size = UDim2.new(0.24, 0, 1, 0)
+			StatusProgressFill.BackgroundColor3 = Color3.fromRGB(125, 108, 255)
+			StatusProgressFill.BorderSizePixel = 0
+			StatusProgressFill.Parent = StatusProgressTrack
+			local fillCorner = Instance.new("UICorner")
+			fillCorner.CornerRadius = UDim.new(1, 0)
+			fillCorner.Parent = StatusProgressFill
+
+			local footer = Instance.new("TextLabel")
+			footer.BackgroundTransparency = 1
+			footer.Position = UDim2.fromOffset(16, 96)
+			footer.Size = UDim2.new(1, -32, 0, 13)
+			footer.Font = Enum.Font.GothamMedium
+			footer.Text = "KEEP ROBLOX OPEN WHILE SAVING"
+			footer.TextColor3 = Color3.fromRGB(105, 113, 132)
+			footer.TextSize = 8
+			footer.TextXAlignment = Enum.TextXAlignment.Left
+			footer.Parent = card
+
+			USSI.StatusGui = StatusGui
+
+			local function randomString()
+				local length = math.random(10, 20)
+				local randomarray = table.create(length)
+				for i = 1, length do
+					randomarray[i] = string.char(math.random(32, 126))
+				end
+				return table.concat(randomarray)
+			end
+
+			local parented = false
+			if global_container.gethui then
+				local success, result = pcall(global_container.gethui)
+				if success and result then
+					StatusGui.Name = randomString()
+					StatusGui.Parent = result
+					parented = true
+				end
+			end
+			if not parented then
+				local CoreGui = game:GetService("CoreGui")
+				if global_container.protectgui then
+					StatusGui.Name = randomString()
+					pcall(global_container.protectgui, StatusGui)
+				else
+					local RobloxGui = CoreGui:FindFirstChild("RobloxGui")
+					if RobloxGui then
+						StatusGui.Name = randomString()
+						StatusGui.Parent = RobloxGui
+						parented = true
+					end
+				end
+				if not parented then
+					StatusGui.Name = randomString()
+					StatusGui.Parent = CoreGui
+				end
+			end
+
+			updateStatusDisplay("Preparing save...", "Reading options and initializing...", nil, "STARTING")
+			local showTween = StatusTweenService:Create(
+				card,
+				TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+				{ Position = UDim2.new(1, -20, 0, 22) }
+			)
+			showTween:Play()
+		end)
+
+		if not ok then
+			warn("[USSI] Could not create progress display: " .. tostring(err))
+			StatusGui = nil
+			StatusText = nil
+			StatusDetail = nil
+			StatusPhaseText = nil
+			StatusProgressTrack = nil
+			StatusProgressFill = nil
+		end
+	end
+
+	createStatusGui()
 
 	local function makeTimeoutHandler(timeout, f, timeout_return)
 		if timeout < 0 then
@@ -5131,6 +5395,8 @@ local function synsaveinstance(...)
 
 		local entries, classList = ctx.entries, ctx.classList
 		local ordered, refs = ctx.ordered, ctx.refs
+		local visitedCount = 0
+		local lastCollectUpdate = 0
 
 		local function recur(instance, parent, ldIgnore)
 			if entries[instance] then
@@ -5138,6 +5404,17 @@ local function synsaveinstance(...)
 			end
 
 			yieldIfDue()
+			visitedCount += 1
+			local now = os.clock()
+			if StatusText and (visitedCount == 1 or visitedCount % 100 == 0 or now - lastCollectUpdate >= 0.5) then
+				lastCollectUpdate = now
+				setStatusDisplay(
+					"Collecting instances",
+					string.format("%d visited • %d kept so far", visitedCount, ctx.instCount),
+					nil,
+					"COLLECT"
+				)
+			end
 
 			local override = InstancesOverrides[instance]
 			local tagOverride = override and override.__ClassName
@@ -5266,6 +5543,7 @@ local function synsaveinstance(...)
 			end
 		end
 		ctx.roots = roots_kept
+		ctx.visitedCount = visitedCount
 
 		return ctx
 	end
@@ -5360,6 +5638,14 @@ local function synsaveinstance(...)
 		local entries, classList = ctx.entries, ctx.classList
 		local refs, ordered = ctx.refs, ctx.ordered
 		local instCount, instTypeCount = ctx.instCount, ctx.instTypeCount
+		local encodedObjects = 0
+
+		setStatusDisplay(
+			"Encoding binary output",
+			string.format("%d instances • %d class groups", instCount, instTypeCount),
+			0,
+			"ENCODING"
+		)
 
 		-- Chunk assembly
 
@@ -5375,7 +5661,7 @@ local function synsaveinstance(...)
 				local now = os.clock()
 				if now - lastStatus > 1 then
 					lastStatus = now
-					StatusText.Text = "Saving.. Size: " .. get_size_format()
+					setStatusDisplay("Building binary output", get_size_format() .. " generated so far", nil, "ENCODING")
 					yieldFrame()
 				end
 			end
@@ -5411,6 +5697,12 @@ local function synsaveinstance(...)
 		local function encode_class_bucket(objs)
 			local n = #objs
 			local entry = entries[objs[1]]
+			setStatusDisplay(
+				"Encoding " .. entry.class,
+				string.format("%d / %d instances encoded • %d in this group", encodedObjects, instCount, n),
+				encodedObjects / math.max(instCount, 1),
+				"ENCODING"
+			)
 
 			local class = entry.class
 
@@ -5522,6 +5814,13 @@ local function synsaveinstance(...)
 			end
 
 			classId += 1
+			encodedObjects += n
+			setStatusDisplay(
+				"Encoding binary output",
+				string.format("%d / %d instances encoded • %s generated", encodedObjects, instCount, get_size_format()),
+				encodedObjects / math.max(instCount, 1),
+				"ENCODING"
+			)
 		end
 
 		for _, objs in classList do
@@ -5615,6 +5914,14 @@ local function synsaveinstance(...)
 		local header =
 			'<!-- Saved by UniversalSynSaveInstance (Join to Copy Games) https://discord.gg/wx4ThpAsmw --><roblox version="4">'
 		local refs = ctx.refs
+		local serializedObjects = 0
+		local lastProgressUpdate = 0
+		setStatusDisplay(
+			"Encoding XML output",
+			string.format("%d instances to serialize", ctx.instCount),
+			0,
+			"ENCODING"
+		)
 
 		local function ReturnProperty(tag, propertyName, value)
 			return "<" .. tag .. ' name="' .. propertyName .. '">' .. value .. "</" .. tag .. ">"
@@ -5641,7 +5948,7 @@ local function synsaveinstance(...)
 			savebuffer_size = 1
 
 			if StatusText then
-				StatusText.Text = "Saving.. Size: " .. get_size_format()
+				setStatusDisplay("Building XML output", get_size_format() .. " generated so far", nil, "ENCODING")
 			end
 
 			yieldFrame()
@@ -5784,6 +6091,18 @@ local function synsaveinstance(...)
 
 				if SaveCacheInterval < savebuffer_size then
 					save_cache()
+				end
+
+				serializedObjects += 1
+				local now = os.clock()
+				if StatusText and (serializedObjects % 25 == 0 or now - lastProgressUpdate >= 0.5 or serializedObjects == ctx.instCount) then
+					lastProgressUpdate = now
+					setStatusDisplay(
+						"Encoding XML output",
+						string.format("%d / %d instances • %s generated", serializedObjects, ctx.instCount, get_size_format()),
+						serializedObjects / math.max(ctx.instCount, 1),
+						"ENCODING"
+					)
 				end
 
 				local children = entry.children
@@ -6072,7 +6391,14 @@ local function synsaveinstance(...)
 			end
 		end
 
+		setStatusDisplay("Collecting instances", "Walking selected hierarchy...", nil, "COLLECT")
 		local ctx = collect(allRoots)
+		setStatusDisplay(
+			"Hierarchy collected",
+			string.format("%d instances • %d classes", ctx.instCount, ctx.instTypeCount),
+			0,
+			"ENCODING"
+		)
 
 		-- collect filtered and deduped; recover each extra's surviving roots.
 		for _, extra in pendingExtras do
@@ -6142,8 +6468,10 @@ local function synsaveinstance(...)
 		end
 
 		if CopyToClipboard then
+			setStatusDisplay("Copying save data", get_size_format() .. " ready for clipboard", nil, "EXPORT")
 			setrbxclipboard(table.concat(chunks))
 		elseif Callback then
+			setStatusDisplay("Delivering save data", get_size_format() .. " ready for callback", nil, "EXPORT")
 			Callback(table.concat(chunks), chunks)
 		elseif OPTIONS.AlternativeWritefile and appendfile then
 			-- Batch chunks into ~4MB appends: sizes come from #chunk, so nothing
@@ -6157,8 +6485,15 @@ local function synsaveinstance(...)
 					return
 				end
 				written += batchSize
+				local progress = math.clamp(written / math.max(totalsize, 1), 0, 1)
+				setStatusDisplay(
+					"Writing output file",
+					string.format("%d%% • %.1f / %.1f MB", math.floor(progress * 100), written / 1048576, totalsize / 1048576),
+					progress,
+					"WRITING"
+				)
 				run_with_loading(
-					"Writing to File " .. math.round(written / totalsize * 100) .. "%",
+					"Writing output file",
 					nil,
 					false,
 					appendfile,
@@ -6170,6 +6505,7 @@ local function synsaveinstance(...)
 				task.wait()
 			end
 
+			setStatusDisplay("Writing output file", "Creating " .. placename, 0, "WRITING")
 			writefile(placename, "")
 
 			for _, chunk in chunks do
@@ -6177,11 +6513,19 @@ local function synsaveinstance(...)
 					flush()
 					local offset = 1
 					while offset <= #chunk do
-						appendfile(placename, string.sub(chunk, offset, offset + SEGMENT_SIZE - 1))
-						offset += SEGMENT_SIZE
+						local piece = string.sub(chunk, offset, offset + SEGMENT_SIZE - 1)
+						appendfile(placename, piece)
+						offset += #piece
+						written += #piece
+						local progress = math.clamp(written / math.max(totalsize, 1), 0, 1)
+						setStatusDisplay(
+							"Writing output file",
+							string.format("%d%% • %.1f / %.1f MB", math.floor(progress * 100), written / 1048576, totalsize / 1048576),
+							progress,
+							"WRITING"
+						)
 						task.wait()
 					end
-					written += #chunk
 				else
 					batch[#batch + 1] = chunk
 					batchSize += #chunk
@@ -6193,8 +6537,9 @@ local function synsaveinstance(...)
 
 			flush()
 		elseif writefile then
+			setStatusDisplay("Writing output file", placename .. " • " .. get_size_format(), nil, "WRITING")
 			run_with_loading(
-				"Writing " .. get_size_format() .. " to File",
+				"Writing output file",
 				nil,
 				true,
 				writefile,
@@ -6301,69 +6646,7 @@ local function synsaveinstance(...)
 		IgnoreList.Player = true
 	end
 
-	if OPTIONS.ShowStatus then
-		do
-			local Exists = USSI.StatusGui
-			if Exists then
-				Exists:Destroy()
-			end
-		end
-
-		local StatusGui = Instance.new("ScreenGui")
-
-		USSI.StatusGui = StatusGui
-
-		StatusGui.DisplayOrder = 2e9
-		pcall(function() -- ? Compatibility with level 2
-			StatusGui.OnTopOfCoreBlur = true
-		end)
-
-		StatusText = Instance.new("TextLabel")
-
-		StatusText.Text = "Saving..."
-
-		StatusText.BackgroundTransparency = 1
-		StatusText.Font = Enum.Font.Code
-		StatusText.AnchorPoint = Vector2.new(1)
-		StatusText.Position = UDim2.new(1)
-		StatusText.Size = UDim2.new(0.3, 0, 0, 20)
-
-		StatusText.TextColor3 = Color3.new(1, 1, 1)
-		StatusText.TextScaled = true
-		StatusText.TextStrokeTransparency = 0.7
-		StatusText.TextXAlignment = Enum.TextXAlignment.Right
-		StatusText.TextYAlignment = Enum.TextYAlignment.Top
-
-		StatusText.Parent = StatusGui
-
-		local function randomString()
-			local length = math.random(10, 20)
-			local randomarray = table.create(length)
-			for i = 1, length do
-				randomarray[i] = string.char(math.random(32, 126))
-			end
-			return table.concat(randomarray)
-		end
-
-		if global_container.gethui then
-			StatusGui.Name = randomString()
-			StatusGui.Parent = global_container.gethui()
-		else
-			if global_container.protectgui then
-				StatusGui.Name = randomString()
-				global_container.protectgui(StatusGui)
-				StatusGui.Parent = game:GetService("CoreGui")
-			else
-				local RobloxGui = game:GetService("CoreGui"):FindFirstChild("RobloxGui")
-				if RobloxGui then
-					StatusGui.Parent = RobloxGui
-				else
-					StatusGui.Name = randomString()
-					StatusGui.Parent = game:GetService("CoreGui")
-				end
-			end
-		end
-	end
+	-- Progress display is created before decompilation and collection.
 	local kickSnapshot = USSI.KickSnapshot
 	if not kickSnapshot then
 		kickSnapshot = {}
@@ -6899,19 +7182,43 @@ local function synsaveinstance(...)
 	if StatusText then
 		task.spawn(function()
 			if ok then
-				StatusText.Text = string.format("Saved! Time %.3f seconds; Size %s", elapse_t, get_size_format())
-				StatusText.TextColor3 = Color3.new(0, 1)
+				setStatusDisplay(
+					"Save complete",
+					string.format("%s • %.3f seconds • %s", placename, elapse_t, get_size_format()),
+					1,
+					"COMPLETE"
+				)
+				StatusText.TextColor3 = Color3.fromRGB(104, 224, 163)
+				if StatusPhaseText then
+					StatusPhaseText.TextColor3 = Color3.fromRGB(117, 231, 174)
+					StatusPhaseText.BackgroundColor3 = Color3.fromRGB(27, 61, 47)
+				end
+				if StatusProgressFill then
+					StatusProgressFill.BackgroundColor3 = Color3.fromRGB(74, 205, 142)
+				end
 				task.wait(Log10 * 2 + ExtraTime)
 			else
 				if LoadingThread then
 					task.cancel(LoadingThread)
 					LoadingThread = nil
 				end
-				StatusText.Text = "Failed! Check F9 console for more info"
-				StatusText.TextColor3 = Color3.new(1)
+				setStatusDisplay("Save failed", "Check F9 console • " .. string.sub(tostring(err), 1, 100), nil, "FAILED")
+				StatusText.TextColor3 = Color3.fromRGB(255, 112, 125)
+				if StatusPhaseText then
+					StatusPhaseText.TextColor3 = Color3.fromRGB(255, 145, 154)
+					StatusPhaseText.BackgroundColor3 = Color3.fromRGB(72, 35, 44)
+				end
+				if StatusProgressFill then
+					StatusProgressFill.BackgroundColor3 = Color3.fromRGB(239, 92, 106)
+				end
 				task.wait(Log10 + ExtraTime)
 			end
-			StatusText:Destroy()
+			if StatusGui then
+				StatusGui:Destroy()
+				if USSI.StatusGui == StatusGui then
+					USSI.StatusGui = nil
+				end
+			end
 		end)
 	end
 
