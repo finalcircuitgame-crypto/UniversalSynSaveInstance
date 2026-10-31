@@ -573,7 +573,7 @@ local function makeToggle(parent, title, description, default, onChanged)
     return function() return value end
 end
 
-local function makeDropdown(parent, title, values, default)
+local function makeDropdown(parent, title, values, default, onChanged)
     local wrap = create("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 0, 57),
@@ -671,6 +671,7 @@ local function makeDropdown(parent, title, values, default)
                 selected = item
                 drop.Text = selected .. "   ▾"
                 setSavedSetting(title, selected)
+                if onChanged then onChanged(selected) end
                 closeMenu()
             end)
         end
@@ -685,6 +686,7 @@ local function makeDropdown(parent, title, values, default)
     end
 
     drop.MouseButton1Click:Connect(openMenu)
+    if onChanged then onChanged(selected) end
     local getter = function() return selected end
     getter.SetValues = function(newValues, preferred)
         if type(newValues) ~= "table" or #newValues == 0 then
@@ -699,6 +701,7 @@ local function makeDropdown(parent, title, values, default)
         end
         drop.Text = selected .. "   ▾"
         setSavedSetting(title, selected)
+        if onChanged then onChanged(selected) end
     end
     return getter
 end
@@ -1013,7 +1016,7 @@ local outputNameBox = makeInput(
     outputCard,
     "Custom output name",
     "My Experience Backup",
-    getSavedSetting("File path", "", "string")
+    getSavedSetting("Custom output name", getSavedSetting("File path", "", "string"), "string")
 )
 local outputNameHint = label(
     outputCard,
@@ -1084,10 +1087,10 @@ local anonymize = makeToggle(scriptPropertyCard, "Anonymize local player", "Repl
 local appearanceCard = makeCard(visualsPage, "APPEARANCE", "Change the look of the GUI without restarting it.")
 local themeDropdown = makeDropdown(appearanceCard, "Color theme", {
     "Midnight Violet", "Ocean Blue", "Emerald", "Rose", "Amber"
-}, CurrentThemeName)
+}, CurrentThemeName, applyThemePreset)
 local scaleDropdown = makeDropdown(appearanceCard, "Interface scale", {
     "80%", "90%", "100%", "110%", "120%"
-}, getSavedSetting("UI scale", "100%", "string"))
+}, getSavedSetting("UI scale", "100%", "string"), applyWindowScale)
 local densityToggle = makeToggle(appearanceCard, "Compact layout", "Reduce card and control spacing to fit more settings on screen.", CompactMode, function(value)
     CompactMode = value
     applyDensity()
@@ -1097,18 +1100,11 @@ local motionToggle = makeToggle(appearanceCard, "Reduced motion", "Disable most 
 end)
 local opacityDropdown = makeDropdown(appearanceCard, "Window opacity", {
     "100%", "96%", "92%", "88%"
-}, getSavedSetting("Window opacity", "100%", "string"))
-themeDropdown -- selected theme is applied by the callback below
-
-
-themeDropdown.SetValues({ "Midnight Violet", "Ocean Blue", "Emerald", "Rose", "Amber" }, CurrentThemeName)
-local function refreshVisualSettings()
-    applyThemePreset(themeDropdown())
-    applyWindowScale(scaleDropdown())
-    local opacity = tonumber(opacityDropdown():match("%d+")) or 100
+}, getSavedSetting("Window opacity", "100%", "string"), function(value)
+    local opacity = tonumber(tostring(value):match("%d+")) or 100
     Window.BackgroundTransparency = 1 - math.clamp(opacity, 80, 100) / 100
     setSavedSetting("Window opacity", tostring(opacity) .. "%")
-end
+end)
 
 
 -- OPTIMIZATION: five controls for save and Explorer performance.
@@ -1116,7 +1112,7 @@ local optimizationCard = makeCard(optimizationPage, "SAVE PRESETS", "Choose a pr
 local savePresetDropdown = makeDropdown(optimizationCard, "Save profile", {
     "Balanced", "Fastest save", "Smaller output", "Maximum detail"
 }, getSavedSetting("Save profile", "Balanced", "string"))
-local writeChunkBox = makeInput(optimizationCard, "Write chunk size (MB, 1-16)", "4", getSavedSetting("Write chunk size (MB)", "4", "string"))
+local writeChunkBox = makeInput(optimizationCard, "Write chunk size (MB, 1-16)", "4", "4")
 
 local explorerPerformanceCard = makeCard(optimizationPage, "EXPLORER PERFORMANCE", "Tune how much the instance browser searches and how it displays results.")
 local explorerResultLimit = makeDropdown(explorerPerformanceCard, "Maximum search results", {
@@ -1128,10 +1124,6 @@ local explorerYieldInterval = makeDropdown(explorerPerformanceCard, "Search yiel
 local explorerSort = makeToggle(explorerPerformanceCard, "Sort Explorer alphabetically", "Alphabetical sorting is easier to scan; disabling it can speed up large tree expansions.", true)
 
 themeDropdown.SetValues({ "Midnight Violet", "Ocean Blue", "Emerald", "Rose", "Amber" }, CurrentThemeName)
-themeDropdown -- UI control for active palette
-themeDropdown = themeDropdown
-
-
 -- MISC: five window and workflow quality-of-life controls.
 local windowCard = makeCard(miscPage, "WINDOW BEHAVIOR", "Control how the interface opens, hides, and remembers its layout.")
 local hotkeyInfo = label(windowCard, "Toggle visibility: Left Ctrl + Left Shift + U", 11, Theme.Muted)
@@ -1174,13 +1166,7 @@ repoButton.MouseButton1Click:Connect(function()
     if setclipboard then pcall(setclipboard, "https://github.com/finalcircuitgame-crypto/UniversalSynSaveInstance") end
 end)
 
-themeDropdown -- Apply default theme at initial render.
-applyThemePreset(themeDropdown())
-applyWindowScale(scaleDropdown())
-local startupOpacity = tonumber(opacityDropdown():match("%d+")) or 100
-Window.BackgroundTransparency = 1 - math.clamp(startupOpacity, 80, 100) / 100
-themeDropdown -- retained for live color theme selection
-
+-- Visual controls apply their saved values as they are created.
 local function saveWindowGeometry()
     setSavedSetting("Window width", Window.Size.X.Offset)
     setSavedSetting("Window height", Window.Size.Y.Offset)
@@ -1812,8 +1798,6 @@ nameFromTargetButton.MouseButton1Click:Connect(function()
     if showToast then showToast("Output name set to " .. target.Name .. ".", false) end
 end)
 
-themeDropdown -- references the existing theme dropdown
-themeDropdown.SetValues({ "Midnight Violet", "Ocean Blue", "Emerald", "Rose", "Amber" }, CurrentThemeName)
 
 
 runButton.MouseButton1Click:Connect(function()
@@ -1976,7 +1960,7 @@ end
 
 Topbar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        if input.Position.X < Topbar.AbsolutePosition.X + Topbar.AbsoluteSize.X - 58 then
+        if input.Position.X < Topbar.AbsolutePosition.X + Topbar.AbsoluteSize.X - 100 then
             beginDrag(input)
         end
     end
@@ -2012,9 +1996,23 @@ end)
 
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        local movedWindow = dragging or resizing
         dragging = false
         resizing = false
         dragInput = nil
+        if movedWindow then
+            saveWindowGeometry()
+        end
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+    if input.KeyCode == Enum.KeyCode.U
+        and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
+        and UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
+        and UserInputService:GetFocusedTextBox() == nil then
+        ScreenGui.Enabled = not ScreenGui.Enabled
     end
 end)
 
