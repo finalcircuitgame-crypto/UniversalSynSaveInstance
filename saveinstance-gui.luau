@@ -20,10 +20,11 @@ local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local Existing = nil
+local GUI_PARENT = CoreGui
 
 pcall(function()
-    local parent = (gethui and gethui()) or CoreGui
-    Existing = parent:FindFirstChild(GUI_NAME)
+    if gethui then GUI_PARENT = gethui() end
+    Existing = GUI_PARENT:FindFirstChild(GUI_NAME)
     if Existing then Existing:Destroy() end
 end)
 
@@ -257,7 +258,7 @@ local ScreenGui = create("ScreenGui", {
     Name = GUI_NAME,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
     ResetOnSpawn = false,
-}, (gethui and gethui()) or CoreGui)
+}, GUI_PARENT)
 
 local Window = create("Frame", {
     AnchorPoint = Vector2.new(0.5, 0.5),
@@ -413,7 +414,7 @@ runButton.MouseButton1Click:Connect(function()
     local compressionLevel = math.clamp(tonumber(compressionLevelBox.Text) or 9, -7, 22)
     local cacheInterval = math.max(1, tonumber(saveCacheBox.Text) or 56320)
     local isBinary = format() == "Binary (.rbxl / .rbxm)"
-    local compressionMode = compression() == "None" and false or compression()
+    local compressionMode = compression()\n    if compressionMode == "None" then compressionMode = false end
     local options = {
         mode = mode(),
         Binary = isBinary,
