@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.8.0"
+local GUI_VERSION = "v1.8.1"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -879,13 +879,16 @@ local function openInstanceBrowser()
 
     local expanded = {}
     local selected = nil
+    local selectedButton = nil
+    local refreshTree
     local searchGeneration = 0
     local rowOrder = 0
 
     local function clearTreeRows()
         for _, child in ipairs(tree:GetChildren()) do
-            if child:IsA("Frame") then child:Destroy() end
+            if child:IsA("GuiObject") then child:Destroy() end
         end
+        selectedButton = nil
         rowOrder = 0
     end
 
@@ -924,6 +927,7 @@ local function openInstanceBrowser()
         }, row)
 
         local nameButton = create("TextButton", {
+            Name = "InstanceName",
             AutoButtonColor = false,
             BackgroundColor3 = selected == instance and Theme.Accent or Theme.Surface,
             BackgroundTransparency = selected == instance and 0.72 or 1,
@@ -947,38 +951,20 @@ local function openInstanceBrowser()
             refreshTree()
         end)
         nameButton.MouseButton1Click:Connect(function()
+            if selectedButton and selectedButton.Parent then
+                selectedButton.BackgroundColor3 = Theme.Surface
+                selectedButton.BackgroundTransparency = 1
+                selectedButton.TextColor3 = Theme.Text
+            end
             setBrowserSelection(instance)
-            for _, child in ipairs(tree:GetChildren()) do
-                if child:IsA("Frame") then
-                    local nameControl = child:FindFirstChild("InstanceName")
-                    if nameControl then
-                        local isSelected = child:GetAttribute("SelectedInstance") == true
-                        nameControl.BackgroundColor3 = isSelected and Theme.Accent or Theme.Surface
-                        nameControl.BackgroundTransparency = isSelected and 0.72 or 1
-                        nameControl.TextColor3 = isSelected and Theme.AccentHover or Theme.Text
-                    end
-                end
-            end
-            nameButton.Name = "InstanceName"
-            row:SetAttribute("SelectedInstance", true)
-            for _, other in ipairs(tree:GetChildren()) do
-                if other:IsA("Frame") and other ~= row then
-                    other:SetAttribute("SelectedInstance", false)
-                    local otherName = other:FindFirstChild("InstanceName")
-                    if otherName then
-                        otherName.BackgroundColor3 = Theme.Surface
-                        otherName.BackgroundTransparency = 1
-                        otherName.TextColor3 = Theme.Text
-                    end
-                end
-            end
+            selectedButton = nameButton
             nameButton.BackgroundColor3 = Theme.Accent
             nameButton.BackgroundTransparency = 0.72
             nameButton.TextColor3 = Theme.AccentHover
         end)
     end
 
-    function refreshTree()
+    refreshTree = function()
         clearTreeRows()
         local roots = game:GetChildren()
         table.sort(roots, function(a, b) return string.lower(a.Name) < string.lower(b.Name) end)
