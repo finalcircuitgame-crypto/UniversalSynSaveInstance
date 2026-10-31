@@ -624,7 +624,7 @@ local isolatePlayer = makeToggle(behaviorCard, "Isolate local player", "Save the
 local isolateStarter = makeToggle(behaviorCard, "Isolate StarterPlayer", "Move StarterPlayer children into a top-level folder.", false)
 local shutdown = makeToggle(behaviorCard, "Shutdown when done", "Close the game after a successful save.", false)
 
-local performanceCard = makeCard(advancedPage, "PERFORMANCE & SCRIPT CONTROL", "Additional engine controls. Safe Mode automatically enables the first two unless you explicitly override them.")
+local performanceCard = makeCard(advancedPage, "PERFORMANCE & SCRIPT CONTROL", "Additional engine controls. Safe Mode automatically enables the first two; either can also be enabled when Safe Mode is off.")
 local killAllScripts = makeToggle(performanceCard, "Stop other running scripts", "Disables other running scripts during capture. Some experiences may stop responding to input.", false)
 local boostFPS = makeToggle(performanceCard, "Boost FPS while saving", "Temporarily disables 3D rendering during the save, then restores it.", false)
 
