@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.3.1"
+local GUI_VERSION = "v1.4.0"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -69,11 +69,21 @@ local function corner(parent, radius)
 end
 
 local function stroke(parent, color, transparency)
-    create("UIStroke", {
+    return create("UIStroke", {
         Color = color or Theme.Border,
         Transparency = transparency or 0,
         Thickness = 1,
     }, parent)
+end
+
+local function tween(object, duration, style, direction, properties)
+    local animation = TweenService:Create(
+        object,
+        TweenInfo.new(duration, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out),
+        properties
+    )
+    animation:Play()
+    return animation
 end
 
 local function label(parent, text, size, color, font)
@@ -101,7 +111,31 @@ local function button(parent, text, height, primary)
         Font = Enum.Font.GothamMedium,
     }, parent)
     corner(b, 8)
-    if not primary then stroke(b) end
+    local outline = not primary and stroke(b) or nil
+    local scale = create("UIScale", { Scale = 1 }, b)
+
+    b.MouseEnter:Connect(function()
+        tween(scale, 0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, { Scale = 1.025 })
+        if primary then
+            tween(b, 0.12, nil, nil, { BackgroundColor3 = Theme.AccentHover })
+        elseif outline then
+            tween(outline, 0.12, nil, nil, { Color = Theme.Accent, Transparency = 0.15 })
+        end
+    end)
+    b.MouseLeave:Connect(function()
+        tween(scale, 0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, { Scale = 1 })
+        if primary then
+            tween(b, 0.14, nil, nil, { BackgroundColor3 = Theme.Accent })
+        elseif outline then
+            tween(outline, 0.14, nil, nil, { Color = Theme.Border, Transparency = 0 })
+        end
+    end)
+    b.MouseButton1Down:Connect(function()
+        tween(scale, 0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, { Scale = 0.97 })
+    end)
+    b.MouseButton1Up:Connect(function()
+        tween(scale, 0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out, { Scale = 1.025 })
+    end)
     return b
 end
 
@@ -123,6 +157,14 @@ local function makeCard(parent, title, description)
         Padding = UDim.new(0, 11),
         SortOrder = Enum.SortOrder.LayoutOrder,
     }, card)
+    local cardStroke = card:FindFirstChildOfClass("UIStroke")
+    local cardScale = create("UIScale", { Scale = 1 }, card)
+    card.MouseEnter:Connect(function()
+        tween(cardStroke, 0.16, nil, nil, { Color = Theme.Accent, Transparency = 0.2 })
+    end)
+    card.MouseLeave:Connect(function()
+        tween(cardStroke, 0.2, nil, nil, { Color = Theme.Border, Transparency = 0 })
+    end)
     label(card, title, 14, Theme.Text, Enum.Font.GothamSemibold)
     if description then
         local desc = label(card, description, 11, Theme.Muted)
@@ -151,7 +193,15 @@ local function makeInput(parent, title, placeholder, initial)
         TextXAlignment = Enum.TextXAlignment.Left,
     }, wrap)
     corner(box, 7)
-    stroke(box)
+    local boxStroke = stroke(box)
+    box.Focused:Connect(function()
+        tween(boxStroke, 0.16, nil, nil, { Color = Theme.Accent, Transparency = 0 })
+        tween(box, 0.16, nil, nil, { BackgroundColor3 = Theme.Surface })
+    end)
+    box.FocusLost:Connect(function()
+        tween(boxStroke, 0.16, nil, nil, { Color = Theme.Border, Transparency = 0 })
+        tween(box, 0.16, nil, nil, { BackgroundColor3 = Theme.Surface2 })
+    end)
     create("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, box)
     return box
 end
@@ -275,11 +325,24 @@ local function makeDropdown(parent, title, values, default)
                 ZIndex = 31,
             }, menu)
             create("UIPadding", { PaddingLeft = UDim.new(0, 11) }, choice)
+            choice.TextTransparency = 1
+            choice.Position = UDim2.fromOffset(5, 0)
+            task.delay((index - 1) * 0.025, function()
+                if choice.Parent then
+                    tween(choice, 0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, {
+                        TextTransparency = 0,
+                        Position = UDim2.fromOffset(0, 0)
+                    })
+                end
+            end)
             choice.MouseEnter:Connect(function()
-                TweenService:Create(choice, TweenInfo.new(0.1), {BackgroundTransparency = 0.15}):Play()
+                tween(choice, 0.1, nil, nil, { BackgroundTransparency = 0.15, TextColor3 = Theme.AccentHover })
             end)
             choice.MouseLeave:Connect(function()
-                TweenService:Create(choice, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
+                tween(choice, 0.12, nil, nil, {
+                    BackgroundTransparency = 1,
+                    TextColor3 = item == selected and Theme.AccentHover or Theme.Text
+                })
             end)
             choice.MouseButton1Click:Connect(function()
                 selected = item
@@ -325,6 +388,15 @@ local Topbar = create("Frame", {
     BackgroundColor3 = Theme.Surface,
     Size = UDim2.new(1, 0, 0, 58),
 }, Window)
+local topAccent = create("Frame", {
+    BackgroundColor3 = Theme.Accent,
+    BorderSizePixel = 0,
+    Position = UDim2.new(0, 0, 1, -2),
+    Size = UDim2.new(0, 0, 0, 2),
+}, Topbar)
+tween(topAccent, 0.55, Enum.EasingStyle.Quart, Enum.EasingDirection.Out, {
+    Size = UDim2.new(1, 0, 0, 2)
+})
 local topTitle = label(Topbar, "  USSI", 17, Theme.Text, Enum.Font.GothamBold)
 topTitle.Position = UDim2.fromOffset(15, 8)
 topTitle.Size = UDim2.new(0, 150, 0, 22)
@@ -378,10 +450,36 @@ local function switchPage(name)
     activePage = page
     page.Visible = true
 
+    local pageScale = page:FindFirstChildOfClass("UIScale")
+    if not pageScale then
+        pageScale = create("UIScale", { Scale = 0.985 }, page)
+    else
+        pageScale.Scale = 0.985
+    end
+    tween(pageScale, 0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out, { Scale = 1 })
+
+    -- Soft staggered card entrance whenever a page is opened.
+    for index, child in ipairs(page:GetChildren()) do
+        if child:IsA("Frame") then
+            local cardScale = child:FindFirstChildOfClass("UIScale")
+            if not cardScale then cardScale = create("UIScale", { Scale = 0.97 }, child) end
+            cardScale.Scale = 0.97
+            task.delay(math.min((index - 1) * 0.035, 0.14), function()
+                if child.Parent and page.Visible then
+                    tween(cardScale, 0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out, { Scale = 1 })
+                end
+            end)
+        end
+    end
+
     for pageName, navButton in pairs(navButtons) do
         local selected = pageName == name
         navButton.BackgroundColor3 = selected and Theme.Accent or Theme.Surface2
         navButton.TextColor3 = selected and Color3.new(1, 1, 1) or Theme.Muted
+        local navScale = navButton:FindFirstChildOfClass("UIScale")
+        if navScale then
+            tween(navScale, 0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out, { Scale = selected and 1.035 or 1 })
+        end
     end
 end
 
