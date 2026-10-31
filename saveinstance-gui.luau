@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.6.0"
+local GUI_VERSION = "v1.7.0"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -594,6 +594,12 @@ local format = makeDropdown(outputCard, "Output format", {"Binary (.rbxl / .rbxm
 local mode = makeDropdown(outputCard, "Save mode", {"optimized", "full", "scripts"}, "optimized")
 local compression = makeDropdown(outputCard, "Compression", {"zstd", "lz4", "None"}, "zstd")
 local pathBox = makeInput(outputCard, "File path", "workspace/PlaceName", "")
+
+local objectCard = makeCard(savePage, "SPECIFIC INSTANCE (OPTIONAL)", "Save one selected Instance instead of the whole place. Leave blank for a normal place save.")
+local objectPathBox = makeInput(objectCard, "Instance path", 'game:GetService("ReplicatedStorage").Assets.CutScenes.NIGHT1TESTING', "")
+local objectHint = label(objectCard, "Supports game:GetService(\"ServiceName\").Folder.Model paths and simple dot paths like ReplicatedStorage.Assets.CutScenes.NIGHT1TESTING.", 10, Theme.Muted)
+objectHint.TextWrapped = true
+
 local saveOptionsCard = makeCard(savePage, "SAVE OPTIONS", "Control how the experience is captured and written.")
 local safeMode = makeToggle(saveOptionsCard, "Safe mode", "Disconnects the local player while saving; enables protective save settings.", false)
 local showStatus = makeToggle(saveOptionsCard, "Show status", "Display save progress on screen.", true)
@@ -663,12 +669,84 @@ local function setStatus(message, color)
     runStatus.TextColor3 = color or Theme.Muted
 end
 
+-- Resolve a user-entered Instance path without executing arbitrary Lua code.
+-- Supported examples:
+--   game:GetService("ReplicatedStorage").Assets.CutScenes.NIGHT1TESTING
+--   ReplicatedStorage.Assets.CutScenes.NIGHT1TESTING
+--   workspace.Map
+local function resolveInstancePath(path)
+    path = tostring(path or ""):match("^%s*(.-)%s*$")
+    if path == "" then return nil, "No instance path was provided." end
+
+    local serviceName, remainder = path:match('^game:GetService%("([^"]+)"%)%.?(.*)$')
+    if not serviceName then
+        serviceName, remainder = path:match("^game:GetService%('([^']+)'%)%.?(.*)$")
+    end
+
+    local current
+    local segments = {}
+
+    if serviceName then
+        local ok, service = pcall(function()
+            return game:GetService(serviceName)
+        end)
+        if not ok then
+            return nil, "Could not access service: " .. serviceName
+        end
+        current = service
+        for segment in remainder:gmatch("[^%.]+") do
+            table.insert(segments, segment)
+        end
+    else
+        path = path:gsub("^game%.", "")
+        for segment in path:gmatch("[^%.]+") do
+            table.insert(segments, segment)
+        end
+        if #segments == 0 then return nil, "The instance path is empty." end
+
+        local first = table.remove(segments, 1)
+        if first == "workspace" or first == "Workspace" then
+            current = workspace
+        elseif first == "game" then
+            current = game
+        else
+            local ok, service = pcall(function()
+                return game:GetService(first)
+            end)
+            current = ok and service or game:FindFirstChild(first)
+            if not current then
+                return nil, "Could not find service or child: " .. first
+            end
+        end
+    end
+
+    for _, segment in ipairs(segments) do
+        local child = current:FindFirstChild(segment)
+        if not child then
+            return nil, "Could not find '" .. segment .. "' under " .. current:GetFullName()
+        end
+        current = child
+    end
+
+    return current
+end
+
 runButton.MouseButton1Click:Connect(function()
     if runButton:GetAttribute("Running") then return end
     local timeout = tonumber(timeoutBox.Text) or 10
     local byteTimeout = tonumber(bytecodeTimeoutBox.Text) or 3
     local compressionLevel = math.clamp(tonumber(compressionLevelBox.Text) or 9, -7, 22)
     local cacheInterval = math.max(1, tonumber(saveCacheBox.Text) or 56320)
+    local targetObject = nil
+    if objectPathBox.Text ~= "" then
+        local resolveError
+        targetObject, resolveError = resolveInstancePath(objectPathBox.Text)
+        if not targetObject then
+            setStatus("Instance path error: " .. tostring(resolveError), Theme.Red)
+            return
+        end
+    end
+
     local isBinary = format() == "Binary (.rbxl / .rbxm)"
     local compressionMode = compression()
     if compressionMode == "None" then compressionMode = false end
@@ -678,6 +756,8 @@ runButton.MouseButton1Click:Connect(function()
         CompressionMode = compressionMode,
         CompressionLevel = compressionLevel,
         FilePath = pathBox.Text ~= "" and pathBox.Text or false,
+        Object = targetObject or false,
+        IsModel = targetObject ~= nil,
         SafeMode = safeMode(),
         ShowStatus = showStatus(),
         ReadMe = readme(),
