@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.11.0"
+local GUI_VERSION = "v1.12.0"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -285,17 +285,90 @@ local Theme = {
     Red = Color3.fromRGB(239, 92, 106),
 }
 
+local ThemePresets = {
+    ["Midnight Violet"] = {
+        Background = Color3.fromRGB(15, 17, 23), Surface = Color3.fromRGB(22, 25, 33),
+        Surface2 = Color3.fromRGB(29, 33, 43), Border = Color3.fromRGB(43, 48, 61),
+        Text = Color3.fromRGB(238, 241, 248), Muted = Color3.fromRGB(145, 153, 170),
+        Accent = Color3.fromRGB(119, 104, 255), AccentHover = Color3.fromRGB(139, 126, 255),
+        Green = Color3.fromRGB(74, 205, 142), Red = Color3.fromRGB(239, 92, 106),
+    },
+    ["Ocean Blue"] = {
+        Background = Color3.fromRGB(12, 19, 28), Surface = Color3.fromRGB(18, 30, 43),
+        Surface2 = Color3.fromRGB(25, 42, 59), Border = Color3.fromRGB(42, 65, 84),
+        Text = Color3.fromRGB(235, 245, 252), Muted = Color3.fromRGB(143, 167, 187),
+        Accent = Color3.fromRGB(58, 160, 235), AccentHover = Color3.fromRGB(91, 184, 250),
+        Green = Color3.fromRGB(75, 211, 163), Red = Color3.fromRGB(244, 105, 117),
+    },
+    ["Emerald"] = {
+        Background = Color3.fromRGB(13, 21, 19), Surface = Color3.fromRGB(20, 31, 28),
+        Surface2 = Color3.fromRGB(28, 44, 39), Border = Color3.fromRGB(47, 70, 60),
+        Text = Color3.fromRGB(237, 246, 241), Muted = Color3.fromRGB(150, 174, 161),
+        Accent = Color3.fromRGB(50, 183, 129), AccentHover = Color3.fromRGB(80, 211, 157),
+        Green = Color3.fromRGB(82, 214, 145), Red = Color3.fromRGB(237, 101, 112),
+    },
+    ["Rose"] = {
+        Background = Color3.fromRGB(25, 16, 23), Surface = Color3.fromRGB(36, 23, 33),
+        Surface2 = Color3.fromRGB(49, 31, 45), Border = Color3.fromRGB(75, 46, 65),
+        Text = Color3.fromRGB(250, 239, 246), Muted = Color3.fromRGB(186, 151, 172),
+        Accent = Color3.fromRGB(219, 91, 153), AccentHover = Color3.fromRGB(241, 123, 179),
+        Green = Color3.fromRGB(87, 204, 144), Red = Color3.fromRGB(245, 105, 130),
+    },
+    ["Amber"] = {
+        Background = Color3.fromRGB(24, 20, 14), Surface = Color3.fromRGB(36, 29, 19),
+        Surface2 = Color3.fromRGB(49, 39, 25), Border = Color3.fromRGB(77, 59, 35),
+        Text = Color3.fromRGB(250, 244, 231), Muted = Color3.fromRGB(187, 169, 137),
+        Accent = Color3.fromRGB(218, 153, 57), AccentHover = Color3.fromRGB(240, 183, 86),
+        Green = Color3.fromRGB(112, 204, 119), Red = Color3.fromRGB(236, 102, 91),
+    },
+}
+
+local CurrentThemeName = getSavedSetting("Theme preset", "Midnight Violet", "string")
+if not ThemePresets[CurrentThemeName] then CurrentThemeName = "Midnight Violet" end
+local ThemeBindings = setmetatable({}, { __mode = "k" })
+local DensityBindings = {}
+local CompactMode = getSavedSetting("Compact layout", false, "boolean")
+local ReducedMotion = getSavedSetting("Reduced motion", false, "boolean")
+
+local function registerDensity(object, property, normalValue, compactValue)
+    DensityBindings[#DensityBindings + 1] = {
+        Object = object, Property = property, Normal = normalValue, Compact = compactValue
+    }
+    object[property] = CompactMode and compactValue or normalValue
+end
+
+local function applyDensity()
+    for _, binding in ipairs(DensityBindings) do
+        if binding.Object and binding.Object.Parent then
+            binding.Object[binding.Property] = CompactMode and binding.Compact or binding.Normal
+        end
+    end
+end
+
 local function create(className, props, parent)
     local object = Instance.new(className)
+    local bindings
     for key, value in pairs(props or {}) do
         object[key] = value
+        if typeof(value) == "Color3" then
+            for role, themeColor in pairs(Theme) do
+                if value == themeColor then
+                    bindings = bindings or {}
+                    bindings[key] = role
+                    break
+                end
+            end
+        end
     end
+    if bindings then ThemeBindings[object] = bindings end
     object.Parent = parent
     return object
 end
 
 local function corner(parent, radius)
-    create("UICorner", { CornerRadius = UDim.new(0, radius or 8) }, parent)
+    local uiCorner = create("UICorner", { CornerRadius = UDim.new(0, radius or 8) }, parent)
+    uiCorner:SetAttribute("USSIBaseCorner", radius or 8)
+    return uiCorner
 end
 
 local function stroke(parent, color, transparency)
@@ -307,6 +380,12 @@ local function stroke(parent, color, transparency)
 end
 
 local function tween(object, duration, style, direction, properties)
+    if ReducedMotion then
+        for property, value in pairs(properties) do
+            object[property] = value
+        end
+        return nil
+    end
     local animation = TweenService:Create(
         object,
         TweenInfo.new(duration, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out),
@@ -383,10 +462,15 @@ local function makeCard(parent, title, description)
         PaddingLeft = UDim.new(0, 16),
         PaddingRight = UDim.new(0, 16),
     }, card)
+    registerDensity(padding, "PaddingTop", UDim.new(0, 15), UDim.new(0, 10))
+    registerDensity(padding, "PaddingBottom", UDim.new(0, 15), UDim.new(0, 10))
+    registerDensity(padding, "PaddingLeft", UDim.new(0, 16), UDim.new(0, 12))
+    registerDensity(padding, "PaddingRight", UDim.new(0, 16), UDim.new(0, 12))
     local layout = create("UIListLayout", {
         Padding = UDim.new(0, 11),
         SortOrder = Enum.SortOrder.LayoutOrder,
     }, card)
+    registerDensity(layout, "Padding", UDim.new(0, 11), UDim.new(0, 7))
     local cardStroke = card:FindFirstChildOfClass("UIStroke")
     local cardScale = create("UIScale", { Scale = 1 }, card)
     card.MouseEnter:Connect(function()
@@ -408,6 +492,7 @@ local function makeInput(parent, title, placeholder, initial)
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 0, 55),
     }, parent)
+    registerDensity(wrap, "Size", UDim2.new(1, 0, 0, 55), UDim2.new(1, 0, 0, 49))
     label(wrap, title, 12, Theme.Muted)
     local box = create("TextBox", {
         BackgroundColor3 = Theme.Surface2,
@@ -437,16 +522,18 @@ local function makeInput(parent, title, placeholder, initial)
     return box
 end
 
-local function makeToggle(parent, title, description, default)
+local function makeToggle(parent, title, description, default, onChanged)
     local row = create("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 0, description and 48 or 34),
     }, parent)
+    registerDensity(row, "Size", UDim2.new(1, 0, 0, description and 48 or 34), UDim2.new(1, 0, 0, description and 42 or 30))
     local titleLabel = label(row, title, 12, Theme.Text, Enum.Font.GothamMedium)
     titleLabel.Size = UDim2.new(1, -58, 0, 18)
     if description then
         local desc = label(row, description, 10, Theme.Muted)
         desc.Position = UDim2.fromOffset(0, 20)
+        registerDensity(desc, "Position", UDim2.fromOffset(0, 20), UDim2.fromOffset(0, 17))
         desc.Size = UDim2.new(1, -58, 0, 24)
         desc.TextWrapped = true
         desc.TextYAlignment = Enum.TextYAlignment.Top
@@ -468,18 +555,20 @@ local function makeToggle(parent, title, description, default)
     }, toggle)
     corner(knob, 20)
     local function render()
-        TweenService:Create(toggle, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        tween(toggle, 0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, {
             BackgroundColor3 = value and Theme.Accent or Theme.Border
-        }):Play()
-        TweenService:Create(knob, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        })
+        tween(knob, 0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, {
             Position = value and UDim2.fromOffset(21, 3) or UDim2.fromOffset(3, 3)
-        }):Play()
+        })
     end
     render()
+    if onChanged then onChanged(value) end
     toggle.MouseButton1Click:Connect(function()
         value = not value
         render()
         setSavedSetting(title, value)
+        if onChanged then onChanged(value) end
     end)
     return function() return value end
 end
@@ -596,7 +685,22 @@ local function makeDropdown(parent, title, values, default)
     end
 
     drop.MouseButton1Click:Connect(openMenu)
-    return function() return selected end
+    local getter = function() return selected end
+    getter.SetValues = function(newValues, preferred)
+        if type(newValues) ~= "table" or #newValues == 0 then
+            newValues = { "None saved" }
+        end
+        if opened then closeMenu() end
+        values = newValues
+        if table.find(values, preferred) then
+            selected = preferred
+        elseif not table.find(values, selected) then
+            selected = values[1]
+        end
+        drop.Text = selected .. "   ▾"
+        setSavedSetting(title, selected)
+    end
+    return getter
 end
 
 local ScreenGui = create("ScreenGui", {
@@ -605,19 +709,90 @@ local ScreenGui = create("ScreenGui", {
     ResetOnSpawn = false,
 }, GUI_PARENT)
 
+local saveRunning = false
+local showToast
+
+local ToastLayer = create("Frame", {
+    Name = "ToastLayer",
+    BackgroundTransparency = 1,
+    AnchorPoint = Vector2.new(0.5, 0),
+    Position = UDim2.new(0.5, 0, 0, -80),
+    Size = UDim2.fromOffset(420, 58),
+    ZIndex = 200,
+}, ScreenGui)
+
+showToast = function(message, isError)
+    if not getSavedSetting("Save completion notifications", true, "boolean") and not isError then return end
+    local existing = ToastLayer:FindFirstChild("Toast")
+    if existing then existing:Destroy() end
+    local toast = create("Frame", {
+        Name = "Toast",
+        BackgroundColor3 = Theme.Surface,
+        Size = UDim2.fromScale(1, 1),
+        ZIndex = 201,
+    }, ToastLayer)
+    corner(toast, 10)
+    stroke(toast, isError and Theme.Red or Theme.Accent, 0.1)
+    local dot = create("Frame", {
+        BackgroundColor3 = isError and Theme.Red or Theme.Green,
+        Position = UDim2.fromOffset(14, 19),
+        Size = UDim2.fromOffset(8, 8),
+        ZIndex = 202,
+    }, toast)
+    corner(dot, 8)
+    local messageLabel = label(toast, message, 11, Theme.Text, Enum.Font.GothamMedium)
+    messageLabel.Position = UDim2.fromOffset(32, 8)
+    messageLabel.Size = UDim2.new(1, -46, 1, -16)
+    messageLabel.TextWrapped = true
+    messageLabel.ZIndex = 202
+    if ReducedMotion then
+        ToastLayer.Position = UDim2.new(0.5, 0, 0, 18)
+    else
+        tween(ToastLayer, 0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out, {
+            Position = UDim2.new(0.5, 0, 0, 18)
+        })
+    end
+    task.delay(3.2, function()
+        if not ToastLayer.Parent or not toast.Parent then return end
+        if ReducedMotion then
+            ToastLayer.Position = UDim2.new(0.5, 0, 0, -80)
+            toast:Destroy()
+        else
+            tween(ToastLayer, 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In, {
+                Position = UDim2.new(0.5, 0, 0, -80)
+            })
+            task.delay(0.22, function()
+                if toast.Parent then toast:Destroy() end
+            end)
+        end
+    end)
+end
+
+local savedWindowWidth = math.clamp(tonumber(getSavedSetting("Window width", 800, "number")) or 800, 620, 1200)
+local savedWindowHeight = math.clamp(tonumber(getSavedSetting("Window height", 560, "number")) or 560, 440, 900)
+local savedWindowX = math.clamp(tonumber(getSavedSetting("Window X", 0, "number")) or 0, -1000, 1000)
+local savedWindowY = math.clamp(tonumber(getSavedSetting("Window Y", 0, "number")) or 0, -700, 700)
+local savedScaleText = getSavedSetting("UI scale", "100%", "string")
+local savedScaleNumber = tonumber(savedScaleText:match("%d+")) or 100
+local savedOpacityText = getSavedSetting("Window opacity", "100%", "string")
+local savedOpacityNumber = tonumber(savedOpacityText:match("%d+")) or 100
+
 local Window = create("Frame", {
     AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.fromScale(0.5, 0.5),
-    Size = UDim2.fromOffset(800, 560),
+    Position = UDim2.new(0.5, savedWindowX, 0.5, savedWindowY),
+    Size = UDim2.fromOffset(savedWindowWidth, savedWindowHeight),
     BackgroundColor3 = Theme.Background,
+    BackgroundTransparency = 1 - math.clamp(savedOpacityNumber, 80, 100) / 100,
     ClipsDescendants = true,
 }, ScreenGui)
 corner(Window, 14)
 stroke(Window, Theme.Border)
-local WindowScale = create("UIScale", {Scale = 0.94}, Window)
-TweenService:Create(WindowScale, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Scale = 1
-}):Play()
+local WindowScale = create("UIScale", {Scale = ReducedMotion and savedScaleNumber / 100 or 0.94 * savedScaleNumber / 100}, Window)
+if not ReducedMotion then
+    TweenService:Create(WindowScale, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Scale = savedScaleNumber / 100
+    }):Play()
+end
 
 local Topbar = create("Frame", {
     BackgroundColor3 = Theme.Surface,
@@ -638,11 +813,27 @@ topTitle.Size = UDim2.new(0, 150, 0, 22)
 local topSubtitle = label(Topbar, "UNIVERSAL SYN SAVE INSTANCE  •  " .. GUI_VERSION, 9, Theme.Muted, Enum.Font.GothamMedium)
 topSubtitle.Position = UDim2.fromOffset(17, 31)
 topSubtitle.Size = UDim2.new(0, 260, 0, 15)
+local minimize = button(Topbar, "—", 30, false)
+minimize.Size = UDim2.fromOffset(32, 30)
+minimize.Position = UDim2.new(1, -82, 0, 14)
+minimize.TextSize = 18
+minimize.MouseButton1Click:Connect(function()
+    ScreenGui.Enabled = false
+end)
+
 local close = button(Topbar, "×", 30, false)
 close.Size = UDim2.fromOffset(32, 30)
 close.Position = UDim2.new(1, -44, 0, 14)
 close.TextSize = 20
 close.MouseButton1Click:Connect(function()
+    if saveRunning and closeGuardToggle and closeGuardToggle() then
+        if showToast then showToast("A save is running. Closing is disabled until it finishes.", true) end
+        return
+    end
+    if ReducedMotion then
+        ScreenGui:Destroy()
+        return
+    end
     local closeTween = TweenService:Create(WindowScale, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
         Scale = 0.94
     })
@@ -687,23 +878,30 @@ local function switchPage(name)
 
     local pageScale = page:FindFirstChildOfClass("UIScale")
     if not pageScale then
-        pageScale = create("UIScale", { Scale = 0.985 }, page)
+        pageScale = create("UIScale", { Scale = ReducedMotion and 1 or 0.985 }, page)
+    end
+    if ReducedMotion then
+        pageScale.Scale = 1
     else
         pageScale.Scale = 0.985
+        tween(pageScale, 0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out, { Scale = 1 })
     end
-    tween(pageScale, 0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out, { Scale = 1 })
 
     -- Soft staggered card entrance whenever a page is opened.
     for index, child in ipairs(page:GetChildren()) do
         if child:IsA("Frame") then
             local cardScale = child:FindFirstChildOfClass("UIScale")
-            if not cardScale then cardScale = create("UIScale", { Scale = 0.97 }, child) end
-            cardScale.Scale = 0.97
-            task.delay(math.min((index - 1) * 0.035, 0.14), function()
-                if child.Parent and page.Visible then
-                    tween(cardScale, 0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out, { Scale = 1 })
-                end
-            end)
+            if not cardScale then cardScale = create("UIScale", { Scale = 1 }, child) end
+            if ReducedMotion then
+                cardScale.Scale = 1
+            else
+                cardScale.Scale = 0.97
+                task.delay(math.min((index - 1) * 0.035, 0.14), function()
+                    if child.Parent and page.Visible then
+                        tween(cardScale, 0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out, { Scale = 1 })
+                    end
+                end)
+            end
         end
     end
 
@@ -718,6 +916,29 @@ local function switchPage(name)
     end
 end
 
+local function applyThemePreset(name)
+    local preset = ThemePresets[name]
+    if not preset then return false end
+    CurrentThemeName = name
+    for role, value in pairs(preset) do
+        Theme[role] = value
+    end
+    for object, bindings in pairs(ThemeBindings) do
+        if object and object.Parent then
+            for property, role in pairs(bindings) do
+                pcall(function() object[property] = Theme[role] end)
+            end
+        end
+    end
+    setSavedSetting("Theme preset", name)
+    for pageName, navButton in pairs(navButtons) do
+        local selected = pages[pageName] == activePage
+        navButton.BackgroundColor3 = selected and Theme.Accent or Theme.Surface2
+        navButton.TextColor3 = selected and Color3.new(1, 1, 1) or Theme.Muted
+    end
+    return true
+end
+
 local function makePage(name)
     local page = create("ScrollingFrame", {
         Name = name,
@@ -730,7 +951,8 @@ local function makePage(name)
         ScrollBarImageColor3 = Theme.Accent,
         Visible = false,
     }, Content)
-    create("UIListLayout", { Padding = UDim.new(0, 11), SortOrder = Enum.SortOrder.LayoutOrder }, page)
+    local pageLayout = create("UIListLayout", { Padding = UDim.new(0, 11), SortOrder = Enum.SortOrder.LayoutOrder }, page)
+    registerDensity(pageLayout, "Padding", UDim.new(0, 11), UDim.new(0, 7))
     pages[name] = page
     local nav = button(Sidebar, name, 36, false)
     navOrder = navOrder + 1
@@ -748,8 +970,23 @@ local home = makePage("Overview")
 local savePage = makePage("Save")
 local optionsPage = makePage("Options")
 local advancedPage = makePage("Advanced")
+local visualsPage = makePage("Visuals")
+local optimizationPage = makePage("Optimization")
+local miscPage = makePage("Misc")
+local usefulPage = makePage("Useful")
 local aboutPage = makePage("About")
 
+-- Apply saved appearance before creating the remaining pages and controls.
+applyThemePreset(CurrentThemeName)
+
+local function applyWindowScale(value)
+    local amount = tonumber(tostring(value):match("%d+")) or 100
+    amount = math.clamp(amount, 80, 120)
+    WindowScale.Scale = amount / 100
+    setSavedSetting("UI scale", tostring(amount) .. "%")
+end
+
+themeDropdown = nil
 local statusText = "Ready"
 local statusLabel = label(home, "●  " .. statusText, 12, Theme.Green, Enum.Font.GothamMedium)
 local hero = makeCard(home, "Save your experience", "Configure a save and run it through the original USSI engine. The interface does not replace or modify the serializer.")
@@ -791,6 +1028,9 @@ local objectPathBox = makeInput(objectCard, "Instance path", 'game:GetService("R
 local objectHint = label(objectCard, "Supports game:GetService(\"ServiceName\").Folder.Model paths and simple dot paths like ReplicatedStorage.Assets.CutScenes.NIGHT1TESTING.", 10, Theme.Muted)
 objectHint.TextWrapped = true
 local browseInstancesButton = button(objectCard, "Browse game instances  →", 36, false)
+local validatePathButton = button(objectCard, "Validate instance path", 32, false)
+local objectPathStatus = label(objectCard, "Path not checked yet.", 10, Theme.Muted)
+objectPathStatus.TextWrapped = true
 
 local saveOptionsCard = makeCard(savePage, "SAVE OPTIONS", "Control how the experience is captured and written.")
 local safeMode = makeToggle(saveOptionsCard, "Safe mode", "Disconnects the local player while saving; enables protective save settings.", false)
@@ -839,6 +1079,64 @@ local unionsAsParts = makeToggle(fileCard, "Convert unions to Parts", "Risky: ke
 local scriptPropertyCard = makeCard(advancedPage, "SCRIPT MODE & PRIVACY", "Extra filtering and identity replacement options.")
 local scriptOnlyProperties = makeToggle(scriptPropertyCard, "Skip non-script properties in Scripts mode", "Only serialize properties for script objects when using Scripts mode.", false)
 local anonymize = makeToggle(scriptPropertyCard, "Anonymize local player", "Replace the local player's name and UserId in the output. Matching text or numbers elsewhere may also change.", false)
+
+-- VISUALS: five live appearance controls.
+local appearanceCard = makeCard(visualsPage, "APPEARANCE", "Change the look of the GUI without restarting it.")
+local themeDropdown = makeDropdown(appearanceCard, "Color theme", {
+    "Midnight Violet", "Ocean Blue", "Emerald", "Rose", "Amber"
+}, CurrentThemeName)
+local scaleDropdown = makeDropdown(appearanceCard, "Interface scale", {
+    "80%", "90%", "100%", "110%", "120%"
+}, getSavedSetting("UI scale", "100%", "string"))
+local densityToggle = makeToggle(appearanceCard, "Compact layout", "Reduce card and control spacing to fit more settings on screen.", CompactMode, function(value)
+    CompactMode = value
+    applyDensity()
+end)
+local motionToggle = makeToggle(appearanceCard, "Reduced motion", "Disable most hover, page, and control animations.", ReducedMotion, function(value)
+    ReducedMotion = value
+end)
+local opacityDropdown = makeDropdown(appearanceCard, "Window opacity", {
+    "100%", "96%", "92%", "88%"
+}, getSavedSetting("Window opacity", "100%", "string"))
+
+-- OPTIMIZATION: five controls for save and Explorer performance.
+local optimizationCard = makeCard(optimizationPage, "SAVE PRESETS", "Choose a practical balance. The preset modifies only the listed save options for the next run.")
+local savePresetDropdown = makeDropdown(optimizationCard, "Save profile", {
+    "Balanced", "Fastest save", "Smaller output", "Maximum detail"
+}, getSavedSetting("Save profile", "Balanced", "string"))
+local writeChunkBox = makeInput(optimizationCard, "Write chunk size (MB, 1-16)", "4", getSavedSetting("Write chunk size (MB)", "4", "string"))
+
+local explorerPerformanceCard = makeCard(optimizationPage, "EXPLORER PERFORMANCE", "Tune how much the instance browser searches and how it displays results.")
+local explorerResultLimit = makeDropdown(explorerPerformanceCard, "Maximum search results", {
+    "50", "100", "250", "500"
+}, getSavedSetting("Explorer max results", "120", "string"))
+local explorerYieldInterval = makeDropdown(explorerPerformanceCard, "Search yield interval", {
+    "500", "1000", "2500", "5000"
+}, getSavedSetting("Explorer yield interval", "2500", "string"))
+local explorerSort = makeToggle(explorerPerformanceCard, "Sort Explorer alphabetically", "Alphabetical sorting is easier to scan; disabling it can speed up large tree expansions.", true)
+
+-- MISC: five window and workflow quality-of-life controls.
+local windowCard = makeCard(miscPage, "WINDOW BEHAVIOR", "Control how the interface opens, hides, and remembers its layout.")
+local hotkeyInfo = label(windowCard, "Toggle visibility: Left Ctrl + Left Shift + U", 11, Theme.Muted)
+local resetWindowButton = button(windowCard, "Reset window position and size", 34, false)
+local notificationsToggle = makeToggle(windowCard, "Save completion notifications", "Show a small in-GUI toast when a save finishes or fails.", true)
+local closeGuardToggle = makeToggle(windowCard, "Prevent closing during a save", "Ignore the close button while the serializer is running.", true)
+local windowTips = label(windowCard, "Use the small dash in the title bar to minimize. The hotkey restores the GUI.", 10, Theme.Muted)
+windowTips.TextWrapped = true
+
+-- USEFUL: five tools for repeatedly targeting the same objects.
+local targetToolsCard = makeCard(usefulPage, "INSTANCE SHORTCUTS", "Keep frequently used targets close and validate paths before starting a save.")
+local recentTargets = getSavedSetting("Recent instance paths", {}, "table")
+local favoriteTargets = getSavedSetting("Favorite instance paths", {}, "table")
+if #recentTargets == 0 then recentTargets = { "No recent targets" } end
+if #favoriteTargets == 0 then favoriteTargets = { "No favorites saved" } end
+local recentTargetsDropdown = makeDropdown(targetToolsCard, "Recent targets", recentTargets, recentTargets[1])
+local useRecentTargetButton = button(targetToolsCard, "Use recent target", 32, false)
+local favoriteTargetsDropdown = makeDropdown(targetToolsCard, "Favorite targets", favoriteTargets, favoriteTargets[1])
+local useFavoriteTargetButton = button(targetToolsCard, "Use favorite target", 32, false)
+local addFavoriteButton = button(targetToolsCard, "Add current target to favorites", 32, false)
+local copyTargetPathButton = button(targetToolsCard, "Copy current target path", 32, false)
+local nameFromTargetButton = button(targetToolsCard, "Use target name as output name", 32, false)
 
 local about = makeCard(aboutPage, "About this interface", "A standalone executor interface for the existing Universal Syn Save Instance project.")
 label(about, "Engine: saveinstance.luau", 12, Theme.Text)
