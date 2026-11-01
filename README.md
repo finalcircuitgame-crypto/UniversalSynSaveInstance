@@ -37,11 +37,11 @@ In the GUI's **Save** tab, use **Custom output name** to name the exported file.
 
 ## Loading and save progress
 
-GUI v1.13.4 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
+GUI v1.13.5 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
 
-## GUI v1.13.4 feature set
+## GUI v1.13.5 feature set
 
-The GUI adds 20 categorized workflow features:
+GUI v1.13.5 also fixes the startup compile issue caused by exceeding Luau's 200-active-local limit; startup references and saved window geometry are grouped into tables.\n\nThe GUI adds 20 categorized workflow features:
 
 **Visuals (5):** five color themes, adjustable interface scale, compact layout, reduced motion, and window opacity.
 
