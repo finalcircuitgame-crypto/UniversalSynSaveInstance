@@ -25,11 +25,11 @@ local HttpService = game:GetService("HttpService")
 local cacheBust = HttpService:GenerateGUID(false)
 
 loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/943d010e1ce57f015bc64286dc91ceddfdaf348f/loader.luau?_ussi_nocache=" .. cacheBust
+    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/acfefcc7cf039deef7462bcb484cb77c755bd868/loader.luau?_ussi_nocache=" .. cacheBust
 ))()
 ```
 
-The v1.13.3 loader sends no-cache headers when the executor exposes request/http_request, adds a fresh GUID query to every request, requires GUI v1.13.2 or newer, and falls back to a commit-pinned v1.13.2 copy if the main branch cannot be fetched. The bootstrap example pins the loader itself to a specific commit and uses a fresh GUID query to avoid reusing a cached bootstrap response.
+The v1.13.4 loader sends no-cache headers when the executor exposes request/http_request, adds a fresh GUID query to every request, requires GUI v1.13.3 or newer, and falls back to a commit-pinned v1.13.2 copy if the main branch cannot be fetched. The bootstrap example pins the loader itself to a specific commit and uses a fresh GUID query to avoid reusing a cached bootstrap response.
 
 ## Custom output names
 
@@ -37,9 +37,9 @@ In the GUI's **Save** tab, use **Custom output name** to name the exported file.
 
 ## Loading and save progress
 
-GUI v1.13.2 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
+GUI v1.13.3 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
 
-## GUI v1.13.2 feature set
+## GUI v1.13.3 feature set
 
 The GUI adds 20 categorized workflow features:
 
@@ -52,6 +52,8 @@ The GUI adds 20 categorized workflow features:
 **Useful tools (5):** validate an Instance path, recent target history, persistent favorite targets, copy an Instance path, and use the selected Instance name as the output filename.
 
 Save profiles affect the next save run and may override individual options for that run. The configurable chunk size only affects the engine's `appendfile` output path; it is clamped by the engine to 256 KB–16 MB.
+
+The **Open project repository** button tries common executor browser-opening functions first. When the executor does not expose one, it copies the GitHub URL and displays a fallback message instead.
 
 # Universal Syn Save Instance
 
