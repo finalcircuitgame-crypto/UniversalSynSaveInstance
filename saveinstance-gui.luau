@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.13.3"
+local GUI_VERSION = "v1.13.4"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -1045,15 +1045,15 @@ local outputNameBox = makeInput(
 )
 local outputNameHint = label(
     outputCard,
-    "Leave blank to use the game's automatic name. The selected format adds .rbxl, .rbxm, .rbxlx, or .rbxmx automatically. Example: Final Circuit - Night 1",
+    "Leave blank to use the game's automatic name. The selected format adds .rbxl, .rbxm, .rbxlx, or .rbxmx automatically. Example: Example Experience Backup",
     10,
     Theme.Muted
 )
 outputNameHint.TextWrapped = true
 
 local objectCard = makeCard(savePage, "SPECIFIC INSTANCE (OPTIONAL)", "Save one selected Instance instead of the whole game. RBXL/RBXLX creates a place file containing the selected hierarchy; RBXM/RBXMX creates a model file.")
-local objectPathBox = makeInput(objectCard, "Instance path", 'game:GetService("ReplicatedStorage").Assets.CutScenes.NIGHT1TESTING', "")
-local objectHint = label(objectCard, "Supports game:GetService(\"ServiceName\").Folder.Model paths and simple dot paths like ReplicatedStorage.Assets.CutScenes.NIGHT1TESTING.", 10, Theme.Muted)
+local objectPathBox = makeInput(objectCard, "Instance path", 'game:GetService("ReplicatedStorage").Assets.Models.ExampleModel', "")
+local objectHint = label(objectCard, "Supports game:GetService(\"ServiceName\").Folder.Model paths and simple dot paths like ReplicatedStorage.Assets.Models.ExampleModel.", 10, Theme.Muted)
 objectHint.TextWrapped = true
 local browseInstancesButton = button(objectCard, "Browse game instances  →", 36, false)
 local validatePathButton = button(objectCard, "Validate instance path", 32, false)
@@ -1316,8 +1316,8 @@ end
 
 -- Resolve a user-entered Instance path without executing arbitrary Lua code.
 -- Supported examples:
---   game:GetService("ReplicatedStorage").Assets.CutScenes.NIGHT1TESTING
---   ReplicatedStorage.Assets.CutScenes.NIGHT1TESTING
+--   game:GetService("ReplicatedStorage").Assets.Models.ExampleModel
+--   ReplicatedStorage.Assets.Models.ExampleModel
 --   workspace.Map
 local function resolveInstancePath(path)
     path = tostring(path or ""):match("^%s*(.-)%s*$")
