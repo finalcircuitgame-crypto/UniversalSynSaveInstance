@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.13.2"
+local GUI_VERSION = "v1.13.3"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -1187,7 +1187,64 @@ label(about, "This fork is unofficial and is not affiliated with Roblox Corporat
 label(about, "UniversalSynSaveInstance https://discord.gg/wx4ThpAsmw", 10, Theme.Muted)
 local repoButton = button(about, "Open project repository", 34, false)
 repoButton.MouseButton1Click:Connect(function()
-    if setclipboard then pcall(setclipboard, "https://github.com/finalcircuitgame-crypto/UniversalSynSaveInstance") end
+    local repoUrl = "https://github.com/finalcircuitgame-crypto/UniversalSynSaveInstance"
+    local openers = {}
+    local seenOpeners = {}
+
+    local function addOpener(fn, owner)
+        if type(fn) == "function" and not seenOpeners[fn] then
+            seenOpeners[fn] = true
+            table.insert(openers, { Callback = fn, Owner = owner })
+        end
+    end
+
+    -- Try common executor-provided external URL openers when available.
+    addOpener(openurl)
+    addOpener(open_url)
+    addOpener(openURL)
+
+    if type(syn) == "table" then
+        addOpener(syn.open_url, syn)
+        addOpener(syn.openurl, syn)
+    end
+
+    local opened = false
+    for _, entry in ipairs(openers) do
+        local ok, result
+        if entry.Owner then
+            ok, result = pcall(entry.Callback, repoUrl)
+            if not ok then
+                ok, result = pcall(entry.Callback, entry.Owner, repoUrl)
+            end
+        else
+            ok, result = pcall(entry.Callback, repoUrl)
+        end
+
+        if ok and result ~= false then
+            opened = true
+            break
+        end
+    end
+
+    if opened then
+        if showToast then showToast("Opening the USSI GitHub repository.", false) end
+        return
+    end
+
+    -- Roblox does not expose a supported in-experience API for opening
+    -- arbitrary external websites, so provide a reliable clipboard fallback.
+    if type(setclipboard) == "function" then
+        local copied = pcall(setclipboard, repoUrl)
+        if showToast then
+            showToast(
+                copied and "No browser opener is available. Repository URL copied to clipboard."
+                    or "Could not open or copy the repository URL.",
+                not copied
+            )
+        end
+    elseif showToast then
+        showToast("This executor has no browser opener or clipboard function.", true)
+    end
 end)
 
 -- Visual controls apply their saved values as they are created.
