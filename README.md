@@ -25,21 +25,21 @@ local HttpService = game:GetService("HttpService")
 local cacheBust = HttpService:GenerateGUID(false)
 
 loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/acfefcc7cf039deef7462bcb484cb77c755bd868/loader.luau?_ussi_nocache=" .. cacheBust
+    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/b3df4c53351e7604ccf2581fdf1f44ba7849bf54/loader.luau?_ussi_nocache=" .. cacheBust
 ))()
 ```
 
-The v1.13.4 loader sends no-cache headers when the executor exposes request/http_request, adds a fresh GUID query to every request, requires GUI v1.13.3 or newer, and falls back to a commit-pinned v1.13.2 copy if the main branch cannot be fetched. The bootstrap example pins the loader itself to a specific commit and uses a fresh GUID query to avoid reusing a cached bootstrap response.
+The v1.13.5 loader sends no-cache headers when the executor exposes request/http_request, adds a fresh GUID query to every request, requires GUI v1.13.4 or newer, and falls back to a commit-pinned v1.13.4 copy if the main branch cannot be fetched. The bootstrap example pins the loader itself to a specific commit and uses a fresh GUID query to avoid reusing a cached bootstrap response.
 
 ## Custom output names
 
-In the GUI's **Save** tab, use **Custom output name** to name the exported file. For example, entering `Night 1 Cutscene` with **RBXL - Place (Binary)** selected saves as `Night 1 Cutscene.rbxl`. Leave the field empty to use the automatic name. The selected format supplies the extension.
+In the GUI's **Save** tab, use **Custom output name** to name the exported file. For example, entering `Example Experience Backup` with **RBXL - Place (Binary)** selected saves as `Example Experience Backup.rbxl`. Leave the field empty to use the automatic name. The selected format supplies the extension.
 
 ## Loading and save progress
 
-GUI v1.13.3 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
+GUI v1.13.4 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
 
-## GUI v1.13.3 feature set
+## GUI v1.13.4 feature set
 
 The GUI adds 20 categorized workflow features:
 
