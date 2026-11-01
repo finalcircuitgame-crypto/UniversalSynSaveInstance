@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.13.4"
+local GUI_VERSION = "v1.13.5"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -85,15 +85,16 @@ pcall(function()
     if Existing then Existing:Destroy() end
 end)
 
-local StartupGui, StartupCard, StartupTitle, StartupDetail, StartupFill
+-- Group startup references to keep this chunk below Luau's 200-local limit.
+local Startup = {}
 
 local function destroyStartupScreen()
-    if not StartupGui then return end
-    local gui = StartupGui
-    StartupGui = nil
+    if not Startup.Gui then return end
+    local gui = Startup.Gui
+    Startup.Gui = nil
     pcall(function()
         local fade = TweenService:Create(
-            StartupCard,
+            Startup.Card,
             TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
             { BackgroundTransparency = 1, Position = UDim2.fromScale(0.5, 0.46) }
         )
@@ -106,42 +107,42 @@ end
 
 local function createStartupScreen()
     local ok = pcall(function()
-        StartupGui = Instance.new("ScreenGui")
-        StartupGui.Name = "USSI_LoadingScreen"
-        StartupGui.IgnoreGuiInset = true
-        StartupGui.ResetOnSpawn = false
-        StartupGui.DisplayOrder = 1999999999
-        StartupGui.Parent = GUI_PARENT
+        Startup.Gui = Instance.new("ScreenGui")
+        Startup.Gui.Name = "USSI_LoadingScreen"
+        Startup.Gui.IgnoreGuiInset = true
+        Startup.Gui.ResetOnSpawn = false
+        Startup.Gui.DisplayOrder = 1999999999
+        Startup.Gui.Parent = GUI_PARENT
 
-        StartupCard = Instance.new("Frame")
-        StartupCard.AnchorPoint = Vector2.new(0.5, 0.5)
-        StartupCard.Position = UDim2.fromScale(0.5, 0.54)
-        StartupCard.Size = UDim2.fromOffset(430, 154)
-        StartupCard.BackgroundColor3 = Color3.fromRGB(17, 20, 29)
-        StartupCard.BorderSizePixel = 0
-        StartupCard.Parent = StartupGui
+        Startup.Card = Instance.new("Frame")
+        Startup.Card.AnchorPoint = Vector2.new(0.5, 0.5)
+        Startup.Card.Position = UDim2.fromScale(0.5, 0.54)
+        Startup.Card.Size = UDim2.fromOffset(430, 154)
+        Startup.Card.BackgroundColor3 = Color3.fromRGB(17, 20, 29)
+        Startup.Card.BorderSizePixel = 0
+        Startup.Card.Parent = Startup.Gui
 
         local scale = Instance.new("UIScale")
         scale.Scale = 0.94
-        scale.Parent = StartupCard
+        scale.Parent = Startup.Card
         TweenService:Create(scale, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
             Scale = 1
         }):Play()
 
         local radius = Instance.new("UICorner")
         radius.CornerRadius = UDim.new(0, 14)
-        radius.Parent = StartupCard
+        radius.Parent = Startup.Card
 
         local outline = Instance.new("UIStroke")
         outline.Color = Color3.fromRGB(62, 65, 91)
         outline.Transparency = 0.12
-        outline.Parent = StartupCard
+        outline.Parent = Startup.Card
 
         local accent = Instance.new("Frame")
         accent.BackgroundColor3 = Color3.fromRGB(125, 108, 255)
         accent.BorderSizePixel = 0
         accent.Size = UDim2.new(1, 0, 0, 3)
-        accent.Parent = StartupCard
+        accent.Parent = Startup.Card
 
         local badge = Instance.new("TextLabel")
         badge.BackgroundColor3 = Color3.fromRGB(43, 39, 75)
@@ -151,7 +152,7 @@ local function createStartupScreen()
         badge.Text = "USSI"
         badge.TextColor3 = Color3.fromRGB(202, 195, 255)
         badge.TextSize = 12
-        badge.Parent = StartupCard
+        badge.Parent = Startup.Card
         local badgeCorner = Instance.new("UICorner")
         badgeCorner.CornerRadius = UDim.new(0, 8)
         badgeCorner.Parent = badge
@@ -165,30 +166,30 @@ local function createStartupScreen()
         heading.TextColor3 = Color3.fromRGB(147, 153, 174)
         heading.TextSize = 9
         heading.TextXAlignment = Enum.TextXAlignment.Left
-        heading.Parent = StartupCard
+        heading.Parent = Startup.Card
 
-        StartupTitle = Instance.new("TextLabel")
-        StartupTitle.BackgroundTransparency = 1
-        StartupTitle.Position = UDim2.fromOffset(76, 38)
-        StartupTitle.Size = UDim2.new(1, -96, 0, 24)
-        StartupTitle.Font = Enum.Font.GothamSemibold
-        StartupTitle.Text = "Starting USSI..."
-        StartupTitle.TextColor3 = Color3.fromRGB(245, 246, 252)
-        StartupTitle.TextSize = 16
-        StartupTitle.TextXAlignment = Enum.TextXAlignment.Left
-        StartupTitle.Parent = StartupCard
+        Startup.Title = Instance.new("TextLabel")
+        Startup.Title.BackgroundTransparency = 1
+        Startup.Title.Position = UDim2.fromOffset(76, 38)
+        Startup.Title.Size = UDim2.new(1, -96, 0, 24)
+        Startup.Title.Font = Enum.Font.GothamSemibold
+        Startup.Title.Text = "Starting USSI..."
+        Startup.Title.TextColor3 = Color3.fromRGB(245, 246, 252)
+        Startup.Title.TextSize = 16
+        Startup.Title.TextXAlignment = Enum.TextXAlignment.Left
+        Startup.Title.Parent = Startup.Card
 
-        StartupDetail = Instance.new("TextLabel")
-        StartupDetail.BackgroundTransparency = 1
-        StartupDetail.Position = UDim2.fromOffset(20, 78)
-        StartupDetail.Size = UDim2.new(1, -40, 0, 18)
-        StartupDetail.Font = Enum.Font.Gotham
-        StartupDetail.Text = "Preparing interface and save engine..."
-        StartupDetail.TextColor3 = Color3.fromRGB(153, 160, 178)
-        StartupDetail.TextSize = 10
-        StartupDetail.TextXAlignment = Enum.TextXAlignment.Left
-        StartupDetail.TextTruncate = Enum.TextTruncate.AtEnd
-        StartupDetail.Parent = StartupCard
+        Startup.Detail = Instance.new("TextLabel")
+        Startup.Detail.BackgroundTransparency = 1
+        Startup.Detail.Position = UDim2.fromOffset(20, 78)
+        Startup.Detail.Size = UDim2.new(1, -40, 0, 18)
+        Startup.Detail.Font = Enum.Font.Gotham
+        Startup.Detail.Text = "Preparing interface and save engine..."
+        Startup.Detail.TextColor3 = Color3.fromRGB(153, 160, 178)
+        Startup.Detail.TextSize = 10
+        Startup.Detail.TextXAlignment = Enum.TextXAlignment.Left
+        Startup.Detail.TextTruncate = Enum.TextTruncate.AtEnd
+        Startup.Detail.Parent = Startup.Card
 
         local track = Instance.new("Frame")
         track.Position = UDim2.fromOffset(20, 111)
@@ -196,19 +197,19 @@ local function createStartupScreen()
         track.BackgroundColor3 = Color3.fromRGB(42, 46, 61)
         track.BorderSizePixel = 0
         track.ClipsDescendants = true
-        track.Parent = StartupCard
+        track.Parent = Startup.Card
         local trackCorner = Instance.new("UICorner")
         trackCorner.CornerRadius = UDim.new(1, 0)
         trackCorner.Parent = track
 
-        StartupFill = Instance.new("Frame")
-        StartupFill.Size = UDim2.new(0.12, 0, 1, 0)
-        StartupFill.BackgroundColor3 = Color3.fromRGB(125, 108, 255)
-        StartupFill.BorderSizePixel = 0
-        StartupFill.Parent = track
+        Startup.Fill = Instance.new("Frame")
+        Startup.Fill.Size = UDim2.new(0.12, 0, 1, 0)
+        Startup.Fill.BackgroundColor3 = Color3.fromRGB(125, 108, 255)
+        Startup.Fill.BorderSizePixel = 0
+        Startup.Fill.Parent = track
         local fillCorner = Instance.new("UICorner")
         fillCorner.CornerRadius = UDim.new(1, 0)
-        fillCorner.Parent = StartupFill
+        fillCorner.Parent = Startup.Fill
 
         local footer = Instance.new("TextLabel")
         footer.BackgroundTransparency = 1
@@ -219,21 +220,21 @@ local function createStartupScreen()
         footer.TextColor3 = Color3.fromRGB(102, 111, 132)
         footer.TextSize = 8
         footer.TextXAlignment = Enum.TextXAlignment.Left
-        footer.Parent = StartupCard
+        footer.Parent = Startup.Card
     end)
 
     if not ok then
-        if StartupGui then StartupGui:Destroy() end
-        StartupGui = nil
+        if Startup.Gui then Startup.Gui:Destroy() end
+        Startup.Gui = nil
         return
     end
 end
 
 local function updateStartupProgress(progress)
-    if not StartupFill then return end
+    if not Startup.Fill then return end
     local amount = math.clamp(progress, 0, 1)
     TweenService:Create(
-        StartupFill,
+        Startup.Fill,
         TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
         { Size = UDim2.new(amount, 0, 1, 0) }
     ):Play()
@@ -242,9 +243,9 @@ end
 createStartupScreen()
 
 local function setStartupStatus(title, detail, progress)
-    if not StartupGui then return end
-    StartupTitle.Text = title
-    StartupDetail.Text = detail
+    if not Startup.Gui then return end
+    Startup.Title.Text = title
+    Startup.Detail.Text = detail
     updateStartupProgress(progress)
 end
 
@@ -797,10 +798,12 @@ showToast = function(message, isError)
     end)
 end
 
-local savedWindowWidth = math.clamp(tonumber(getSavedSetting("Window width", 800, "number")) or 800, 620, 1200)
-local savedWindowHeight = math.clamp(tonumber(getSavedSetting("Window height", 560, "number")) or 560, 440, 900)
-local savedWindowX = math.clamp(tonumber(getSavedSetting("Window X", 0, "number")) or 0, -1000, 1000)
-local savedWindowY = math.clamp(tonumber(getSavedSetting("Window Y", 0, "number")) or 0, -700, 700)
+local WindowGeometry = {
+    Width = math.clamp(tonumber(getSavedSetting("Window width", 800, "number")) or 800, 620, 1200),
+    Height = math.clamp(tonumber(getSavedSetting("Window height", 560, "number")) or 560, 440, 900),
+    X = math.clamp(tonumber(getSavedSetting("Window X", 0, "number")) or 0, -1000, 1000),
+    Y = math.clamp(tonumber(getSavedSetting("Window Y", 0, "number")) or 0, -700, 700),
+}
 local savedScaleText = getSavedSetting("UI scale", "100%", "string")
 local savedScaleNumber = tonumber(savedScaleText:match("%d+")) or 100
 local savedOpacityText = getSavedSetting("Window opacity", "100%", "string")
@@ -808,8 +811,8 @@ local savedOpacityNumber = tonumber(savedOpacityText:match("%d+")) or 100
 
 local Window = create("Frame", {
     AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.new(0.5, savedWindowX, 0.5, savedWindowY),
-    Size = UDim2.fromOffset(savedWindowWidth, savedWindowHeight),
+    Position = UDim2.new(0.5, WindowGeometry.X, 0.5, WindowGeometry.Y),
+    Size = UDim2.fromOffset(WindowGeometry.Width, WindowGeometry.Height),
     BackgroundColor3 = Theme.Background,
     BackgroundTransparency = 1 - math.clamp(savedOpacityNumber, 80, 100) / 100,
     ClipsDescendants = true,
@@ -1015,8 +1018,7 @@ local function applyWindowScale(value)
     setSavedSetting("UI scale", tostring(amount) .. "%")
 end
 
-local statusText = "Ready"
-local statusLabel = label(home, "●  " .. statusText, 12, Theme.Green, Enum.Font.GothamMedium)
+local statusLabel = label(home, "●  Ready", 12, Theme.Green, Enum.Font.GothamMedium)
 local hero = makeCard(home, "Save your experience", "Configure a save and run it through the original USSI engine. The interface does not replace or modify the serializer.")
 local heroButton = button(hero, "Open save settings  →", 38, true)
 heroButton.MouseButton1Click:Connect(function()
