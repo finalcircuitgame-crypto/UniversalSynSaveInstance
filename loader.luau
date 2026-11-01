@@ -1,5 +1,5 @@
 --[[
-    Universal Syn Save Instance - GUI Loader v1.13.4
+    Universal Syn Save Instance - GUI Loader v1.13.5
     Forces fresh HTTP requests with unique URLs and no-cache request headers,
     validates the downloaded source, and reports fetch/compile/runtime errors.
 
@@ -15,9 +15,9 @@ local BASE_URL = "https://raw.githubusercontent.com/finalcircuitgame-crypto/Univ
 local MAIN_URL = BASE_URL .. "main/saveinstance-gui.luau"
 
 -- Stable fallback in case GitHub's main branch cannot be reached.
-local FALLBACK_URL = BASE_URL .. "87f76eb22283fe33a8f797f5aded7d8e6f795fc8/saveinstance-gui.luau"
+local FALLBACK_URL = BASE_URL .. "62e1bc8d02dabfb19314e03f7bf94ec36e4a211b/saveinstance-gui.luau"
 
-local MIN_VERSION = { 1, 13, 3 }
+local MIN_VERSION = { 1, 13, 4 }
 
 local function log(message)
     print("[USSI Loader] " .. tostring(message))
