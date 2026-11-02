@@ -25,11 +25,11 @@ local HttpService = game:GetService("HttpService")
 local cacheBust = HttpService:GenerateGUID(false)
 
 loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/b3df4c53351e7604ccf2581fdf1f44ba7849bf54/loader.luau?_ussi_nocache=" .. cacheBust
+    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/6d3079af6d3b5f15e88ce3ddb2a397496eb8b8a8/loader.luau?_ussi_nocache=" .. cacheBust
 ))()
 ```
 
-The v1.13.5 loader sends no-cache headers when the executor exposes request/http_request, adds a fresh GUID query to every request, requires GUI v1.13.4 or newer, and falls back to a commit-pinned v1.13.4 copy if the main branch cannot be fetched. The bootstrap example pins the loader itself to a specific commit and uses a fresh GUID query to avoid reusing a cached bootstrap response.
+The v1.13.6 loader sends no-cache headers when the executor exposes request/http_request, adds a fresh GUID query to every request, requires GUI v1.13.5 or newer, and falls back to the patched, commit-pinned v1.13.5 copy if the main branch cannot be fetched. The bootstrap example pins the loader itself to a specific commit and uses a fresh GUID query to avoid reusing a cached bootstrap response.
 
 ## Custom output names
 
