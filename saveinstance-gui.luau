@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.13.5"
+local GUI_VERSION = "v1.13.6"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -1054,8 +1054,8 @@ local outputNameHint = label(
 outputNameHint.TextWrapped = true
 
 local objectCard = makeCard(savePage, "SPECIFIC INSTANCE (OPTIONAL)", "Save one selected Instance instead of the whole game. RBXL/RBXLX creates a place file containing the selected hierarchy; RBXM/RBXMX creates a model file.")
-local objectPathBox = makeInput(objectCard, "Instance path", 'game:GetService("ReplicatedStorage").Assets.Models.ExampleModel', "")
-local objectHint = label(objectCard, "Supports game:GetService(\"ServiceName\").Folder.Model paths and simple dot paths like ReplicatedStorage.Assets.Models.ExampleModel.", 10, Theme.Muted)
+local objectPathBox = makeInput(objectCard, "Instance path", 'game:GetService("Workspace"), game:GetService("MaterialService")', "")
+local objectHint = label(objectCard, "Enter one path or multiple comma-separated paths. Multiple targets require an RBXM/RBXMX model format. Supports game:GetService(\"ServiceName\") and dot paths.", 10, Theme.Muted)
 objectHint.TextWrapped = true
 local browseInstancesButton = button(objectCard, "Browse game instances  →", 36, false)
 local validatePathButton = button(objectCard, "Validate instance path", 32, false)
@@ -1376,6 +1376,83 @@ local function resolveInstancePath(path)
     end
 
     return current
+end
+
+-- Split comma-separated paths without treating commas inside quoted service
+-- names or parentheses as separators, then resolve each path independently.
+local function resolveInstancePaths(input)
+    local source = tostring(input or "")
+    local entries = {}
+    local buffer = {}
+    local depth = 0
+    local quote = nil
+    local index = 1
+
+    while index <= #source do
+        local character = source:sub(index, index)
+
+        if quote then
+            buffer[#buffer + 1] = character
+            if character == "\\" and index < #source then
+                index += 1
+                buffer[#buffer + 1] = source:sub(index, index)
+            elseif character == quote then
+                quote = nil
+            end
+        elseif character == "\"" or character == "'" then
+            quote = character
+            buffer[#buffer + 1] = character
+        elseif character == "(" then
+            depth += 1
+            buffer[#buffer + 1] = character
+        elseif character == ")" then
+            depth -= 1
+            if depth < 0 then
+                return nil, "Unexpected closing parenthesis in Instance path list."
+            end
+            buffer[#buffer + 1] = character
+        elseif character == "," and depth == 0 then
+            entries[#entries + 1] = table.concat(buffer):match("^%s*(.-)%s*$")
+            table.clear(buffer)
+        else
+            buffer[#buffer + 1] = character
+        end
+
+        index += 1
+    end
+
+    if quote then
+        return nil, "Unclosed quote in Instance path list."
+    end
+    if depth ~= 0 then
+        return nil, "Unclosed parenthesis in Instance path list."
+    end
+
+    entries[#entries + 1] = table.concat(buffer):match("^%s*(.-)%s*$")
+    if #entries == 0 or ( #entries == 1 and entries[1] == "" ) then
+        return nil, "No Instance path was provided."
+    end
+
+    local instances = {}
+    local seen = {}
+    for _, path in ipairs(entries) do
+        if path == "" then
+            return nil, "An Instance path is empty. Check the commas in your list."
+        end
+
+        local instance, err = resolveInstancePath(path)
+        if not instance then
+            return nil, string.format("%s: %s", path, tostring(err))
+        end
+        if seen[instance] then
+            return nil, "The path list contains the same Instance more than once: " .. path
+        end
+
+        seen[instance] = true
+        instances[#instances + 1] = instance
+    end
+
+    return instances
 end
 
 local function addRecentTarget(path)
@@ -1802,18 +1879,26 @@ end
 browseInstancesButton.MouseButton1Click:Connect(openInstanceBrowser)
 
 validatePathButton.MouseButton1Click:Connect(function()
-    local target, err = resolveInstancePath(objectPathBox.Text)
-    if not target then
+    local targets, err = resolveInstancePaths(objectPathBox.Text)
+    if not targets then
         objectPathStatus.Text = "Invalid path: " .. tostring(err)
         objectPathStatus.TextColor3 = Theme.Red
-        if showToast then showToast("Instance path could not be resolved.", true) end
+        if showToast then showToast("One or more Instance paths could not be resolved.", true) end
         return
     end
-    local fullName = target:GetFullName()
-    local childCount = #target:GetChildren()
-    objectPathStatus.Text = string.format("Valid %s • %d direct children • %s", target.ClassName, childCount, fullName)
+
+    local names = {}
+    for _, target in ipairs(targets) do
+        names[#names + 1] = target.Name .. " [" .. target.ClassName .. "]"
+    end
+    objectPathStatus.Text = string.format(
+        "Valid %d target%s • %s",
+        #targets,
+        #targets == 1 and "" or "s",
+        table.concat(names, ", ")
+    )
     objectPathStatus.TextColor3 = Theme.Green
-    addRecentTarget(fullName)
+    addRecentTarget(objectPathBox.Text:match("^%s*(.-)%s*$"))
 end)
 
 useRecentTargetButton.MouseButton1Click:Connect(function()
@@ -1836,19 +1921,19 @@ end)
 
 addFavoriteButton.MouseButton1Click:Connect(function()
     if objectPathBox.Text == "" then
-        if showToast then showToast("Enter or select an instance path first.", true) end
+        if showToast then showToast("Enter or select an Instance path first.", true) end
         return
     end
-    local target, err = resolveInstancePath(objectPathBox.Text)
-    if not target then
+    local targets, err = resolveInstancePaths(objectPathBox.Text)
+    if not targets then
         objectPathStatus.Text = "Invalid path: " .. tostring(err)
         objectPathStatus.TextColor3 = Theme.Red
         return
     end
-    local fullName = target:GetFullName()
-    local added = addFavoriteTarget(fullName)
+    local pathList = objectPathBox.Text:match("^%s*(.-)%s*$")
+    local added = addFavoriteTarget(pathList)
     if showToast then
-        showToast(added and "Added instance to favorites." or "That instance is already a favorite.", false)
+        showToast(added and "Added target list to favorites." or "That target list is already a favorite.", false)
     end
 end)
 
@@ -1868,17 +1953,23 @@ end)
 nameFromTargetButton.MouseButton1Click:Connect(function()
     local rawPath = objectPathBox.Text:match("^%s*(.-)%s*$")
     if rawPath == "" then
-        if showToast then showToast("Select an instance first.", true) end
+        if showToast then showToast("Select an Instance first.", true) end
         return
     end
-    local target, err = resolveInstancePath(rawPath)
-    if not target then
+    local targets, err = resolveInstancePaths(rawPath)
+    if not targets then
         if showToast then showToast("Invalid target path: " .. tostring(err), true) end
         return
     end
-    outputNameBox.Text = target.Name
-    setSavedSetting("Custom output name", target.Name)
-    if showToast then showToast("Output name set to " .. target.Name .. ".", false) end
+
+    local names = {}
+    for _, target in ipairs(targets) do
+        names[#names + 1] = target.Name
+    end
+    local outputName = table.concat(names, " + ")
+    outputNameBox.Text = outputName
+    setSavedSetting("Custom output name", outputName)
+    if showToast then showToast("Output name set to " .. outputName .. ".", false) end
 end)
 
 
@@ -1889,39 +1980,46 @@ runButton.MouseButton1Click:Connect(function()
     local byteTimeout = tonumber(bytecodeTimeoutBox.Text) or 3
     local compressionLevel = math.clamp(tonumber(compressionLevelBox.Text) or 9, -7, 22)
     local cacheInterval = math.max(1, tonumber(saveCacheBox.Text) or 56320)
-    local targetObject = nil
+    local targetObjects = {}
     if objectPathBox.Text ~= "" then
         if browserSelectedInstance and objectPathBox.Text == browserSelectedPath then
-            targetObject = browserSelectedInstance
+            targetObjects = { browserSelectedInstance }
         else
             local resolveError
-            targetObject, resolveError = resolveInstancePath(objectPathBox.Text)
-            if not targetObject then
+            targetObjects, resolveError = resolveInstancePaths(objectPathBox.Text)
+            if not targetObjects then
                 setStatus("Instance path error: " .. tostring(resolveError), Theme.Red)
                 return
             end
         end
     end
+    local targetObject = #targetObjects == 1 and targetObjects[1] or nil
+    local multipleTargets = #targetObjects > 1
 
     local selectedFormat = format()
     local isBinary = selectedFormat == "RBXL - Place (Binary)" or selectedFormat == "RBXM - Model (Binary)"
     local isModel = selectedFormat == "RBXM - Model (Binary)" or selectedFormat == "RBXMX - Model (XML)"
 
-    if targetObject then
-        local ok, targetName = pcall(function() return targetObject:GetFullName() end)
-        if ok then addRecentTarget(targetName) end
+    if multipleTargets and not isModel then
+        setStatus("Multiple Instances must be saved as an RBXM or RBXMX model. Select a Model file type.", Theme.Red)
+        return
+    end
+
+    if #targetObjects > 0 then
+        addRecentTarget(objectPathBox.Text:match("^%s*(.-)%s*$"))
     end
 
     local compressionMode = compression()
     if compressionMode == "None" then compressionMode = false end
     local options = {
-        mode = mode(),
+        mode = multipleTargets and "custom" or mode(),
         Binary = isBinary,
         CompressionMode = compressionMode,
         CompressionLevel = compressionLevel,
         FilePath = outputNameBox.Text:match("^%s*(.-)%s*$") ~= "" and outputNameBox.Text:match("^%s*(.-)%s*$") or false,
         Object = targetObject or false,
-        IsModel = isModel,
+        ExtraInstances = multipleTargets and targetObjects or {},
+        IsModel = isModel or multipleTargets,
         SafeMode = safeMode(),
         ShowStatus = showStatus(),
         ReadMe = readme(),
