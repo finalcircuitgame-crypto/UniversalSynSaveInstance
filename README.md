@@ -25,7 +25,7 @@ local HttpService = game:GetService("HttpService")
 local cacheBust = HttpService:GenerateGUID(false)
 
 loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/6d3079af6d3b5f15e88ce3ddb2a397496eb8b8a8/loader.luau?_ussi_nocache=" .. cacheBust
+    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/9383b1065d34dcb5f50b42fdae5974476bc7030a/loader.luau?_ussi_nocache=" .. cacheBust
 ))()
 ```
 
