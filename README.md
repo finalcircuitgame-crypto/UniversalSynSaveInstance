@@ -29,17 +29,21 @@ loadstring(game:HttpGet(
 ))()
 ```
 
-The v1.13.6 loader sends no-cache headers when the executor exposes request/http_request, adds a fresh GUID query to every request, requires GUI v1.13.5 or newer, and falls back to the patched, commit-pinned v1.13.5 copy if the main branch cannot be fetched. The bootstrap example pins the loader itself to a specific commit and uses a fresh GUID query to avoid reusing a cached bootstrap response.
+The v1.13.7 loader sends no-cache headers when the executor exposes request/http_request, adds a fresh GUID query to every request, requires GUI v1.13.6 or newer, and falls back to the patched, commit-pinned v1.13.6 copy if the main branch cannot be fetched. The bootstrap example pins the loader itself to a specific commit and uses a fresh GUID query to avoid reusing a cached bootstrap response.
 
 ## Custom output names
 
 In the GUI's **Save** tab, use **Custom output name** to name the exported file. For example, entering `Example Experience Backup` with **RBXL - Place (Binary)** selected saves as `Example Experience Backup.rbxl`. Leave the field empty to use the automatic name. The selected format supplies the extension.
 
+## Multiple Instance targets
+
+In the GUI's **Save → Instance path** field, separate multiple paths with commas, for example `game:GetService("Workspace"), game:GetService("MaterialService")`. Use **Validate instance path** to check each target. Multiple targets are saved together as one model, so select **RBXM - Model (Binary)** or **RBXMX - Model (XML)**. A single path continues to work with the place or model formats.
+
 ## Loading and save progress
 
-GUI v1.13.5 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
+GUI v1.13.6 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
 
-## GUI v1.13.5 feature set
+## GUI v1.13.6 feature set
 
 GUI v1.13.5 also fixes the startup compile issue caused by exceeding Luau's 200-active-local limit; startup references and saved window geometry are grouped into tables.\n\nThe GUI adds 20 categorized workflow features:
 
