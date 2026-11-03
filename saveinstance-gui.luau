@@ -11,7 +11,7 @@
 
 local REPO = "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/main/"
 local GUI_NAME = "USSI_Executor_GUI"
-local GUI_VERSION = "v1.13.6"
+local GUI_VERSION = "v1.13.8"
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -1316,24 +1316,91 @@ local function setStatus(message, color, progress)
     end
 end
 
--- Resolve a user-entered Instance path without executing arbitrary Lua code.
+-- Resolve Instance paths without executing arbitrary Lua expressions.
 -- Supported examples:
 --   game:GetService("ReplicatedStorage").Assets.Models.ExampleModel
+--   game:GetService("ReplicatedStorage"):WaitForChild("Assets"):WaitForChild("Troops"):WaitForChild("Star Cannon")
 --   ReplicatedStorage.Assets.Models.ExampleModel
 --   workspace.Map
 local function resolveInstancePath(path)
     path = tostring(path or ""):match("^%s*(.-)%s*$")
     if path == "" then return nil, "No instance path was provided." end
 
-    local serviceName, remainder = path:match('^game:GetService%("([^"]+)"%)%.?(.*)$')
-    if not serviceName then
-        serviceName, remainder = path:match("^game:GetService%('([^']+)'%)%.?(.*)$")
+    local position = 1
+    local function skipWhitespace()
+        while position <= #path and path:sub(position, position):match("%s") do
+            position += 1
+        end
+    end
+
+    local function readIdentifier()
+        skipWhitespace()
+        local first = position
+        while position <= #path and path:sub(position, position):match("[%w_]") do
+            position += 1
+        end
+        if position == first then
+            return nil, "Expected an Instance or service name near: " .. path:sub(position)
+        end
+        return path:sub(first, position - 1)
+    end
+
+    local function readQuotedString()
+        skipWhitespace()
+        local quote = path:sub(position, position)
+        if quote ~= "\"" and quote ~= "'" then
+            return nil, "Expected a quoted string near: " .. path:sub(position)
+        end
+
+        position += 1
+        local result = {}
+        while position <= #path do
+            local character = path:sub(position, position)
+            position += 1
+
+            if character == quote then
+                return table.concat(result)
+            elseif character == "\\" then
+                if position > #path then
+                    return nil, "Incomplete escape sequence in quoted Instance name."
+                end
+                local escaped = path:sub(position, position)
+                position += 1
+                local replacements = {
+                    ["n"] = "\n",
+                    ["r"] = "\r",
+                    ["t"] = "\t",
+                    ["\\"] = "\\",
+                    ["\""] = "\"",
+                    ["'"] = "'",
+                }
+                result[#result + 1] = replacements[escaped] or escaped
+            else
+                result[#result + 1] = character
+            end
+        end
+
+        return nil, "Unclosed quoted Instance name."
+    end
+
+    local function expectCharacter(expected)
+        skipWhitespace()
+        if path:sub(position, position) ~= expected then
+            return false, "Expected '" .. expected .. "' near: " .. path:sub(position)
+        end
+        position += 1
+        return true
     end
 
     local current
-    local segments = {}
+    local servicePrefix = path:match("^game:GetService%s*%(")
+    if servicePrefix then
+        position = #servicePrefix + 1
+        local serviceName, readError = readQuotedString()
+        if not serviceName then return nil, readError end
+        local valid, expectError = expectCharacter(")")
+        if not valid then return nil, expectError end
 
-    if serviceName then
         local ok, service = pcall(function()
             return game:GetService(serviceName)
         end)
@@ -1341,38 +1408,77 @@ local function resolveInstancePath(path)
             return nil, "Could not access service: " .. serviceName
         end
         current = service
-        for segment in remainder:gmatch("[^%.]+") do
-            table.insert(segments, segment)
-        end
     else
-        path = path:gsub("^game%.", "")
-        for segment in path:gmatch("[^%.]+") do
-            table.insert(segments, segment)
-        end
-        if #segments == 0 then return nil, "The instance path is empty." end
+        local root, readError = readIdentifier()
+        if not root then return nil, readError end
 
-        local first = table.remove(segments, 1)
-        if first == "workspace" or first == "Workspace" then
-            current = workspace
-        elseif first == "game" then
+        if root == "game" then
             current = game
+        elseif root == "workspace" or root == "Workspace" then
+            current = workspace
         else
             local ok, service = pcall(function()
-                return game:GetService(first)
+                return game:GetService(root)
             end)
-            current = ok and service or game:FindFirstChild(first)
+            current = ok and service or game:FindFirstChild(root)
             if not current then
-                return nil, "Could not find service or child: " .. first
+                return nil, "Could not find service or child: " .. root
             end
         end
     end
 
-    for _, segment in ipairs(segments) do
-        local child = current:FindFirstChild(segment)
-        if not child then
-            return nil, "Could not find '" .. segment .. "' under " .. current:GetFullName()
+    while true do
+        skipWhitespace()
+        if position > #path then break end
+
+        local separator = path:sub(position, position)
+        if separator == "." then
+            position += 1
+            local childName, readError = readIdentifier()
+            if not childName then return nil, readError end
+
+            local child = current:FindFirstChild(childName)
+            if not child then
+                return nil, "Could not find '" .. childName .. "' under " .. current:GetFullName()
+            end
+            current = child
+        elseif separator == ":" then
+            position += 1
+            local method, readError = readIdentifier()
+            if not method then return nil, readError end
+            if method ~= "WaitForChild" and method ~= "FindFirstChild" then
+                return nil, "Unsupported path method ':" .. method .. "'. Use WaitForChild or FindFirstChild."
+            end
+
+            local valid, expectError = expectCharacter("(")
+            if not valid then return nil, expectError end
+            local childName
+            childName, readError = readQuotedString()
+            if childName == nil then return nil, readError end
+            valid, expectError = expectCharacter(")")
+            if not valid then return nil, expectError end
+
+            local child
+            if method == "WaitForChild" then
+                local ok, result = pcall(function()
+                    return current:WaitForChild(childName, 5)
+                end)
+                if not ok then
+                    return nil, "WaitForChild failed for '" .. childName .. "': " .. tostring(result)
+                end
+                child = result
+            else
+                child = current:FindFirstChild(childName)
+            end
+
+            if not child then
+                return nil, "Could not find '" .. childName .. "' under " .. current:GetFullName()
+                    .. (method == "WaitForChild" and " (WaitForChild timed out after 5 seconds)." or "")
+            end
+            current = child
+        else
+            return nil, "Unexpected character '" .. separator .. "' in Instance path near: " .. path:sub(position)
         end
-        current = child
     end
 
     return current
