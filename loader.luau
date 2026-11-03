@@ -1,5 +1,5 @@
 --[[
-    Universal Syn Save Instance - GUI Loader v1.13.6
+    Universal Syn Save Instance - GUI Loader v1.13.7
     Forces fresh HTTP requests with unique URLs and no-cache request headers,
     validates the downloaded source, and reports fetch/compile/runtime errors.
 
@@ -17,7 +17,7 @@ local MAIN_URL = BASE_URL .. "main/saveinstance-gui.luau"
 -- Stable fallback in case GitHub's main branch cannot be reached.
 local FALLBACK_URL = BASE_URL .. "cdcf7a4c71d997565249efd8ee9525193e522647/saveinstance-gui.luau"
 
-local MIN_VERSION = { 1, 13, 5 }
+local MIN_VERSION = { 1, 13, 6 }
 
 local function log(message)
     print("[USSI Loader] " .. tostring(message))
