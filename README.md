@@ -25,11 +25,11 @@ local HttpService = game:GetService("HttpService")
 local cacheBust = HttpService:GenerateGUID(false)
 
 loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/806d2f3155f8c2bfff4570696ef572e9338e0216/loader.luau?_ussi_nocache=" .. cacheBust
+    "https://raw.githubusercontent.com/finalcircuitgame-crypto/UniversalSynSaveInstance/7c8ac116ee32cfe89726910984151139616e1cbd/loader.luau?_ussi_nocache=" .. cacheBust
 ))()
 ```
 
-The v1.13.7 loader sends no-cache headers when the executor exposes request/http_request, adds a fresh GUID query to every request, requires GUI v1.13.6 or newer, and falls back to the patched, commit-pinned v1.13.6 copy if the main branch cannot be fetched. The bootstrap example pins the loader itself to a specific commit and uses a fresh GUID query to avoid reusing a cached bootstrap response.
+The v1.13.9 loader sends no-cache headers when the executor exposes request/http_request, adds a fresh GUID query to every request, requires GUI v1.13.8 or newer, and falls back to the patched, commit-pinned v1.13.8 copy if the main branch cannot be fetched. The bootstrap example pins the loader itself to a specific commit and uses a fresh GUID query to avoid reusing a cached bootstrap response.
 
 ## Custom output names
 
@@ -37,13 +37,13 @@ In the GUI's **Save** tab, use **Custom output name** to name the exported file.
 
 ## Multiple Instance targets
 
-In the GUI's **Save → Instance path** field, separate multiple paths with commas, for example `game:GetService("Workspace"), game:GetService("MaterialService")`. Use **Validate instance path** to check each target. Multiple targets are saved together as one model, so select **RBXM - Model (Binary)** or **RBXMX - Model (XML)**. A single path continues to work with the place or model formats.
+In the GUI's **Save → Instance path** field, separate multiple paths with commas, for example `game:GetService("Workspace"), game:GetService("MaterialService")`. Use **Validate instance path** to check each target. Multiple targets are saved together as one model, so select **RBXM - Model (Binary)** or **RBXMX - Model (XML)**. A single path continues to work with the place or model formats. Paths can also use chained `:WaitForChild("Name")` or `:FindFirstChild("Name")` calls, including names with spaces, such as `game:GetService("ReplicatedStorage"):WaitForChild("Assets"):WaitForChild("Troops"):WaitForChild("Star Cannon")`. `WaitForChild` uses a five-second timeout for each segment.
 
 ## Loading and save progress
 
-GUI v1.13.6 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
+GUI v1.13.8 includes a startup panel with download, compile, and engine initialization stages. During a save, the USSI status card reports hierarchy collection, encoded object counts, output size, and file writing. Percentages are shown only for stages where the engine can measure progress; a single whole-file `writefile` call uses an animated indeterminate bar instead.
 
-## GUI v1.13.6 feature set
+## GUI v1.13.8 feature set
 
 GUI v1.13.5 also fixes the startup compile issue caused by exceeding Luau's 200-active-local limit; startup references and saved window geometry are grouped into tables.\n\nThe GUI adds 20 categorized workflow features:
 
